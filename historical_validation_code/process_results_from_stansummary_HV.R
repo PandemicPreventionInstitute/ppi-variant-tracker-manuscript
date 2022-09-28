@@ -12,7 +12,7 @@ if(USE_CASE == ""){
     USE_CASE<-'local'
 }
 if (USE_CASE == 'local'){
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code")
+    setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript/historical_validation_code")
 }
 
 # Libraries ---------------------------------------------------------------
