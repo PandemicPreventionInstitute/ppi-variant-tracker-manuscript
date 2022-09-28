@@ -1,57 +1,79 @@
-# ppi-variant-tracker
+# ppi-variant-tracker-manuscript
+This repo provides the code needed to generate the figures and outputs in
+the manuscript. The code calls the GISAID SARS-COv-2 metadata, obtained at 6 
+different time points between April 28th, 2022 and July 1st, 2022, for the 
+bulk of the analysis. A one time pull of the GISAID flu metadata is also used.
+This data is available for authenticated GISAID users, and can be regenerated
+as it is used here by filtering by submission date in the line list data. 
+We thank GISAID for making this data publicly available. 
 
-Pipeline for variant tracker report:
-1. Run auto_extract_gisaid.R to get updated gisaid line list metadata in the 
-   form of a csv. If in local, this overwrites daily, if in Domino, this saves 
-   with the date tacked on at the end.
-2. If tracking a variant that is a pango lineage + a mutation, download the 
-   data from gisaid and save to raw as "pre_pango_variant_1.csv" and so forth 
-   for multiple
-3. Set the variants we're tracking at the top of run pre_processing.R. This 
-   takes in the raw metadata and OWID case data and produces datasets with the 
-   number of lineages in each country on each day, in 3 output datasets that 
-   group by: pango_lineage, first set of numbers in pango lineages, and 
-   variants we're tracking + early and late dominant variants for each 
-   country. Also produces a small dataframe with the countries selected for 
-   visualization for each variant.
-4. Take the processed metadata and transform it into a `json` object for Stan 
-   to use with `prepare_data_for_cmdstan.R`. This file takes the 
-   `data/processed/lineage_t.csv` file produced by step 3 and saves it in 
-   `data/processed/data_for_cmdstan.json`.
-5. Run the multicountry model in 
-   `code/stancode/multicountry_variant_multinomial_ncp.stan` using `cmdstan`
-   by running `bash run_cmdstan.sh` in terminal in the project folder.  
-   See the next section for more information on how to get the model set up in 
+## Pipeline for historical validation 
+1. Run `code/auto_extract_gisaid.R` to get updated gisaid line list metadata in the 
+   form of a csv. For the 6 reference datasets, we manually time stamped these 
+   corresponding to the day they were generated. These are saved into 
+   `../data/raw/{reference_date}_metadata.csv`. Alternatively, generate these from 
+   filtering the current metadata by submission date, for each reference date. 
+2. Run `historical_validation_code/pre_processing_HV.R`, which loads in the
+   `../data/raw/{reference_date}_metadata.csv` data, finds a consensus set
+   of lineages across all 6 reference datasets, and saves timestamped aggregated
+   outputs of the counts of sequences of a particular lineage in each country on each
+   day as `../data/processed/validation_data/lineage_t_{reference_date}.csv
+3. Run `historical_validation_code/prepare_data_for_cmdstan_HV.R` which loads in
+   the lineage-country-timepoint data from each reference date 
+   `../data/processed/validation_data/lineage_t_{reference_date} and loops through
+   and transforms it into `json` object for cmdstan as 
+   `../data/processed/validation_data/data_for_cmdstan_{reference_date}.json`. It also
+   generates the csv data needed for the single country MLE estimation model at each 
+   reference data as `../data/processed/validation_data/data_for_nnet_{reference_date}.csv
+4. Run the multicountry model using `historical_validation_code/run_model_using_
+   shell_scripts.R` which reads in the reference date json objects `../data/processed
+   /validation_data/data_for_cmdstan_{reference_date}.json`, resets the directory
+   to the ppi-variant-tracker-manuscript folder, runs `run_cmdstan_HV.sh` which runs
+   each model (takes about 4 hours on Mac OS XXX for each reference dataset). See the 
+   next section for more information on how to get the model set up in 
    `cmdstan`. We **strongly** recommend using `cmdstan` or, if not on an M1 
    Mac `CmdStanR`, over RStan because of some improvements in Stan's HMC 
    sampler that are slow to update in RStan/CRAN.
    - If the first time the model is being run, it needs to be compiled.  See 
-     the next section for an explanation of how compile a stan model with 
-     `cmdstan`.
-6. Run `process_results_from_cmdstan.R` to take the raw `Stan` output files 
-   and wrangle them into individual `csv` files to be used for post-processing 
-   and model validation.
-7. Run post_processing.R takes in the output from the model (model_pred_p.csv 
-   and r_distrib.csv) and the outputs from pre_processing (variant_t.csv and 
-   variant_df.csv), as well as the datasets that contain each of these with 
-   each day of the run concatenated to it.  A few notes on this:
-    -  FINAL_RUN: set this to true if this is the run that we want to save to 
-       the database (i.e. we're not troubleshooting)
-    -  FIRST_REPORT: set this to true if this is the first report we want to 
-       save to the database (since we will have to create the historical 
-       dataset)
-    - INCID_RECONSTRUCT: set this to true if we want to take the reported 
-      cases in the country and infer incidence time course.
-    - ACCOUNT_FOR_DELAY: set this to true if we want to shift the Rt back so 
-      that it corresponds to when individuals were likely exposed, rather than 
-      when they tested positive. Have seen this both ways...
-    - post_processing.R returns the concatenated datasets for retrospective 
-      evaluation, as well as a dataset with variants and countries, growth 
-      advantage estimates, summary stats by variant-country for plotting, and 
-      lag times by variant vs all other variants in each country we will 
-      visualize.
-8. Build Variant_Tracker_V1_Prototype.Rmd by adding in variant 
-   country-specifics and interpretation
+     the next section for an explanation of how to compile a stan model with 
+     `cmdstan`. 
+     The script then runs `process_output_HV.sh` which generates mode output files in
+   `../data/output/multicountry_output/validation/processed_output_{reference_date}.csv.
+   Within this R script, the `$p_{hat}$` (model estimated prevalence) and `$Y_\tilde$`
+   (model estimated observed sequences of each lineage) get summarized for each reference 
+   date. Those are saved here: `../data/output/multicountry_output/validation/
+   p_hat_{reference_date}.csv and `../data/output/multicountry_output/validation/
+   Y_tilde_{reference_date}.csv
+ 5. Run `historical_validation_code/process_results_from_stansummary_HV.R which loads in
+   the lineage-country-timepoints from each reference date, and the summarized model
+   estimated variant dynamics, joining them together so that the countries and lineages
+   are properly matched. It generates a time stamped `../data/processed/validation_data/
+   clean_global_df_{reference_date}.csv` that contains the model estimates summarized lineage
+   prevalences alongside the observed data.
+ 6. Run `historical_validation_code/process_results_from_cmdstan_HV.R` which loads
+   in the lineage-country-timepoints from each reference date and the raw model output. 
+   This script computes the Briar score for each country and each country-lineage based on the 
+   predicted variant prevalence ($p_{hat}$) and the observed variant prevalence. These are
+   saved as `../data/processed/validation_data/country_metrics_{reference_date}.csv` and
+   `../data/processed/validation_data/country_lineage_metrics_{reference_date}.csv`. 
+   This script also generates the summary stats and full posterior distributions of the 
+   relative fitness advantage estimates at the country (`../data/processed/validation_data/
+   `r_summary_{reference_date}.csv` and `../data/processed/validation_data/r_distrib_
+   {reference_date}.csv`) and at the global level (`../data/processed/validation_data/
+   mu_hat_{reference_date}.csv and `../data/processed/validation_data/mu_distrib_
+   {reference_date}.csv`).
+ 7. Run `historical_validation_code/evaluate_output_HV.R` which loads in all of the time stamped
+   model outputs, concatenates them together and combines them with the final one 
+   (from July 1st, 2022) for direct comparison. This generates a single dataset for each 
+   output type, that contains a column for the reference date. These outputs are:
+   `../data/output/validation/r_summary.csv`, `../data/output/validation/clean_global_df.csv`,
+    `../data/output/validation/mu_hat.csv`, `../data/output/validation/r_distrib.csv`, 
+    `../data/output/validation/country_metrics.csv`, `../data/output/validation/country_
+    lineage_metrics.csv`
+
+These are loaded into `code/figures.R` to generate Figure 4 in the main text of the manuscript and
+multiple supplemental figures. 
+
 
 ## Setting up the Stan model
 
