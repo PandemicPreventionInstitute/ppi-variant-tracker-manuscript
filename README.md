@@ -20,7 +20,7 @@ We thank GISAID for making this data publicly available.
    day as `../data/processed/validation_data/lineage_t_{reference_date}.csv`
 3. Run `historical_validation_code/prepare_data_for_cmdstan_HV.R` which loads in
    the lineage-country-timepoint data from each reference date 
-   `../data/processed/validation_data/lineage_t_{reference_date} and loops through
+   `../data/processed/validation_data/lineage_t_{reference_date}.csv` and loops through
    and transforms it into `json` object for cmdstan as 
    `../data/processed/validation_data/data_for_cmdstan_{reference_date}.json`. It also
    generates the csv data needed for the single country MLE estimation model at each 
