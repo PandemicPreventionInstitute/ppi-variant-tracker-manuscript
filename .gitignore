@@ -1,0 +1,11 @@
+data/raw
+data/static/secrets_gisaid.csv
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data/
+.Rproj
+*.rds
+fits/
+*.html
