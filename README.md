@@ -17,14 +17,14 @@ We thank GISAID for making this data publicly available.
    `../data/raw/{reference_date}_metadata.csv` data, finds a consensus set
    of lineages across all 6 reference datasets, and saves timestamped aggregated
    outputs of the counts of sequences of a particular lineage in each country on each
-   day as `../data/processed/validation_data/lineage_t_{reference_date}.csv
+   day as `../data/processed/validation_data/lineage_t_{reference_date}.csv`
 3. Run `historical_validation_code/prepare_data_for_cmdstan_HV.R` which loads in
    the lineage-country-timepoint data from each reference date 
    `../data/processed/validation_data/lineage_t_{reference_date} and loops through
    and transforms it into `json` object for cmdstan as 
    `../data/processed/validation_data/data_for_cmdstan_{reference_date}.json`. It also
    generates the csv data needed for the single country MLE estimation model at each 
-   reference data as `../data/processed/validation_data/data_for_nnet_{reference_date}.csv
+   reference data as `../data/processed/validation_data/data_for_nnet_{reference_date}.csv`
 4. Run the multicountry model using `historical_validation_code/run_model_using_
    shell_scripts.R` which reads in the reference date json objects `../data/processed
    /validation_data/data_for_cmdstan_{reference_date}.json`, resets the directory
@@ -42,8 +42,7 @@ We thank GISAID for making this data publicly available.
    Within this R script, the $p_{hat}$ (model estimated prevalence) and $\tilde{Y}$
    (model estimated observed sequences of each lineage) get summarized for each reference 
    date. Those are saved here: `../data/output/multicountry_output/validation/
-   p_hat_{reference_date}.csv` and `../data/output/multicountry_output/validation/
-   Y_tilde_{reference_date}.csv`
+   p_hat_{reference_date}.csv` and `../data/output/multicountry_output/validation/Y_tilde_{reference_date}.csv`
  5. Run `historical_validation_code/process_results_from_stansummary_HV.R` which loads in
    the lineage-country-timepoints from each reference date, and the summarized model
    estimated variant dynamics, joining them together so that the countries and lineages
@@ -60,7 +59,7 @@ We thank GISAID for making this data publicly available.
    relative fitness advantage estimates at the country (`../data/processed/validation_data/
    `r_summary_{reference_date}.csv` and `../data/processed/validation_data/r_distrib_
    {reference_date}.csv`) and at the global level (`../data/processed/validation_data/
-   mu_hat_{reference_date}.csv and `../data/processed/validation_data/mu_distrib_
+   mu_hat_{reference_date}.csv` and `../data/processed/validation_data/mu_distrib_
    {reference_date}.csv`).
  7. Run `historical_validation_code/evaluate_output_HV.R` which loads in all of the time stamped
    model outputs, concatenates them together and combines them with the final one 
