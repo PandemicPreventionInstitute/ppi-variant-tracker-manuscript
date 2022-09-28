@@ -39,7 +39,7 @@ We thank GISAID for making this data publicly available.
      `cmdstan`. 
      The script then runs `process_output_HV.sh` which generates mode output files in
    `../data/output/multicountry_output/validation/processed_output_{reference_date}.csv.
-   Within this R script, the `$p_{hat}$` (model estimated prevalence) and `$Y_\tilde$`
+   Within this R script, the `$p_{hat}$` (model estimated prevalence) and `$Y_/tilde$`
    (model estimated observed sequences of each lineage) get summarized for each reference 
    date. Those are saved here: `../data/output/multicountry_output/validation/
    p_hat_{reference_date}.csv and `../data/output/multicountry_output/validation/
