@@ -38,11 +38,11 @@ We thank GISAID for making this data publicly available.
      the next section for an explanation of how to compile a stan model with 
      `cmdstan`. 
      The script then runs `process_output_HV.sh` which generates mode output files in
-   `../data/output/multicountry_output/validation/processed_output_{reference_date}.csv.
+   `../data/output/multicountry_output/validation/processed_output_{reference_date}.csv`.
    Within this R script, the `$p_{hat}$` (model estimated prevalence) and `$\tilde{Y}$`
    (model estimated observed sequences of each lineage) get summarized for each reference 
    date. Those are saved here: `../data/output/multicountry_output/validation/
-   p_hat_{reference_date}.csv and `../data/output/multicountry_output/validation/
+   p_hat_{reference_date}.csv` and `../data/output/multicountry_output/validation/
    Y_tilde_{reference_date}.csv`
  5. Run `historical_validation_code/process_results_from_stansummary_HV.R which loads in
    the lineage-country-timepoints from each reference date, and the summarized model
