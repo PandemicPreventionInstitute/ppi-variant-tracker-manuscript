@@ -18,7 +18,7 @@ if(USE_CASE == ""){
 
 if (USE_CASE == 'local'){
     REFERENCE_DATA_PATH <- 'data/processed/validation_data/reference_data_used.csv'
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker")
+    setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript")
 }
 
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
