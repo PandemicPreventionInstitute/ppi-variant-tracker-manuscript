@@ -1,0 +1,14 @@
+#!/usr/bin/env bash 
+
+### Generate country-specific GISAID metadata files for specified countries from the full metadata files
+
+
+
+
+for country in "United Kingdom" "Finland" "Mexico" "Peru" "Thailand"
+do
+
+head -1 ../data/metadata.tsv > ../data/metadata_"$country".tsv
+rg "$country" ../data/metadata.tsv >> ../data/metadata_"$country".tsv
+done
+

@@ -1,0 +1,20 @@
+---
+output: html_document
+---
+
+$$n_{itk} \sim Multinom(N_{tk}, p_{itk})$$
+$$p_{itk} = \frac{e^{\eta_{itk}}}{\sum_{i=1}^{I}e^{\eta_{itk}}}$$
+$$\eta_{itk} = 0, \text{where } i = 1$$
+$$\eta_{itk} = \beta_{0, ik} + r_k t_i, \text{where }i > 1$$
+$$r_k \sim MVN(\mu^{r}, \Sigma)$$
+$$\mu^r \sim N(\mu^{hier}, \sigma^{hier})$$
+$$\Sigma = \tau \Omega \tau$$
+$$\Omega \sim LKJ(2)$$
+$$\tau_i \sim N(0.5, 0.2)$$
+$$\mu^{hier} \sim N(-0.1, 0.05)$$
+$$\sigma^{hier} \sim N(1, 0.1)$$
+$$\beta_{0, ik} \sim N(\mu^{\beta_0}_{i}, \sigma^{\beta_0}_{i})$$
+$$\mu^{\beta_0}_{i} \sim t(-5, 5, 3)$$
+$$\sigma^{\beta_0}_{i} \sim N(2, 1)$$
+
+

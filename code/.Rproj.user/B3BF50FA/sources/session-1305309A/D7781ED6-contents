@@ -1,0 +1,388 @@
+
+
+# Libraries ---------------------------------------------------------------
+
+library(brms)
+library(tidyverse)
+library(lubridate)
+library(tidybayes)
+library(nnet)
+library(rstan)
+library(loo)
+
+# Data --------------------------------------------------------------------
+
+all_seqs <- read_delim('../data/all_seqs.tsv',
+                       delim = '\t',
+                       na = "?")
+variant_seqs <- read_delim('../data/variant_seqs.tsv',
+                           delim = '\t',
+                           na = '?') %>% 
+  mutate(pangolin_lineage = 'recombinant')
+
+
+# Remove putative variants from the all seqs df ---------------------------
+
+variant_names <- variant_seqs %>% pull(gisaid_epi_isl)
+
+all_seqs <- all_seqs %>% 
+  filter(!(gisaid_epi_isl %in% variant_names))
+
+# Format df ------------------------------------------------------------
+
+df <- all_seqs %>% 
+    rbind(variant_seqs) %>% 
+    group_by(pangolin_lineage, date) %>% 
+    summarize(n = n()) %>% 
+    ungroup() %>% 
+    mutate(t = as.integer((date))) %>% 
+    complete(pangolin_lineage, t,
+             fill = list(n=0)) %>% 
+    mutate(t = rank(rank(t, ties.method = 'max'), ties.method = 'max'),
+           t = t / max(t)) %>% 
+    group_by(t) %>% 
+    fill(date, .direction = 'updown') %>% 
+    ungroup() %>% 
+    filter(t < max(t))
+
+
+# Generate constants for data munging -------------------------------------
+
+last_five_timepoints <- df %>% 
+    arrange(t) %>%
+    pull(t) %>%
+    unique() %>% 
+    tail(n=5)
+
+most_prevalant_linage <- df %>% 
+    filter(t %in% last_five_timepoints) %>% 
+    group_by(t) %>% 
+    mutate(N = sum(n),
+           p = n / N) %>% 
+    group_by(pangolin_lineage) %>% 
+    summarize(p = weighted.mean(p, N)) %>% 
+    filter(p == max(p)) %>% 
+    pull(pangolin_lineage)
+
+# Preprocess data for Stan ------------------------------------------------
+
+# Number of timepoints observed
+N <- length(unique(df$t))
+
+# Number of categories the multinomial could produce
+ncat <- length(unique(df$pangolin_lineage))
+    
+# An N x ncat matrix of observed draws from each category at each timepoint
+Y <- df %>% 
+    mutate(n = as.integer(n)) %>% 
+    pivot_wider(id_cols = t,
+                names_from = pangolin_lineage,
+                values_from = n) %>% 
+    select(-t) %>% 
+    relocate(most_prevalant_linage, .before = everything()) %>% 
+    as.matrix()
+colnames(Y) <- NULL
+
+# validity testing
+stopifnot(nrow(Y) == N)
+stopifnot(ncol(Y) == ncat)
+stopifnot(typeof(Y) == "integer")
+
+# Total number of seqs observed at each timepoint
+trials <- df %>% 
+    group_by(t) %>% 
+    summarize(N = sum(n)) %>% 
+    ungroup() %>% 
+    arrange(t) %>% 
+    pull(N)
+
+# validity testing
+stopifnot(length(trials) == N)
+stopifnot(typeof(trials) == "integer")
+
+# number of population-level effects: intercept and (link-)linear trend of time
+K <- 2
+
+# population-level design matrix
+X <- data.frame("Intercept" = 1,
+                              "t" = df %>% pull(t) %>% unique())
+
+# should the likelihood be ignored?
+prior_only = 0
+
+data <- list(N = N,
+             ncat = ncat,
+             Y = Y,
+             trials = trials,
+             K = K,
+             X = X,
+             prior_only = 0)
+
+
+# Set up Stan model -------------------------------------------------------
+
+stanmodel_base <- stan_model(file = 'brms_multinomial_logit_simple.stan',
+                        save_dso = T,
+                        verbose = F,
+                        auto_write = T)
+
+stanmodel_wide <- stan_model(file = 'brms_multinomial_logit_wide.stan',
+                            save_dso = T,
+                            verbose = F,
+                            auto_write = T)
+
+stanmodel_random <- stan_model(file = 'multinomial_logit_unit_random.stan',
+                               save_dso = T,
+                               verbose = F,
+                               auto_write = T)
+
+# Fit Stan model ----------------------------------------------------------
+
+stanfit <- sampling(object = stanmodel,
+                    data = data,
+                    chains = 4,
+                    iter = 5000,
+                    verbose = T,
+                    cores = 4)
+
+stanfit_wide <- sampling(object = stanmodel_wide,
+                    data = data,
+                    chains = 4,
+                    iter = 5000,
+                    verbose = T,
+                    cores = 4)
+
+stanfit_random <- sampling(object = stanmodel_random,
+                         data = data,
+                         chains = 4,
+                         iter = 5000,
+                         verbose = T,
+                         cores = 4)
+
+print(stanfit)
+pairs(stanfit, pars = c("mu_hierarchical", "sigma_hierarchical", "lp__"), log = T)
+
+# Visualize coefficients --------------------------------------------------
+
+names <- tibble(i = 1:(ncat-1),
+                pango = df %>% filter(pangolin_lineage != most_prevalant_linage) %>% pull(pangolin_lineage) %>% unique(),
+                N = df %>% filter(pangolin_lineage != most_prevalant_linage) %>% group_by(pangolin_lineage) %>% summarize(N = sum(n)) %>% pull(N))
+
+stanfit_random %>% 
+    spread_draws(r[i]) %>% 
+    mean_qi %>% 
+    left_join(names) %>% 
+    ggplot(aes(color = log10(N)))+
+    geom_point(aes(x = pango, y = r))+
+    geom_linerange(aes(x = pango, ymin = .lower, ymax = .upper))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+stanfit %>% 
+    spread_draws(r[i]) %>% 
+    mean_qi %>% 
+    left_join(names) %>% 
+    ggplot()+
+    geom_histogram(aes(x = r))
+
+
+preds <- stanfit_random %>% 
+    spread_draws(p_tilde[i, j]) %>% 
+    mean_qi()
+
+names <- tibble(i = 1:ncat,
+                pango = df %>% 
+                    mutate(n = as.integer(n)) %>% 
+                    pivot_wider(id_cols = t,
+                                names_from = pangolin_lineage,
+                                values_from = n) %>% 
+                    select(-t) %>% 
+                    relocate(most_prevalant_linage, .before = everything()) %>% 
+                    colnames(),
+                N = df %>% group_by(pangolin_lineage) %>% summarize(N = sum(n)) %>% pull(N))
+
+dates <- tibble(i = 1:(N),
+                date = seq.Date(from = ymd('2022-2-1'),
+                                by = 'day',
+                                length.out = N))
+
+df %>% 
+    group_by(t) %>% 
+    mutate(N = sum(n)) %>% 
+    ungroup() %>% 
+    mutate(p = n/N) %>% 
+    rename(pango = pangolin_lineage)
+
+
+preds %>% 
+    left_join(names %>% 
+                  rename(j = i)) %>% 
+    left_join(dates) %>% 
+    left_join(df %>% 
+                  group_by(t) %>% 
+                  mutate(N = sum(n)) %>% 
+                  ungroup() %>% 
+                  mutate(p = n/N) %>% 
+                  rename(pango = pangolin_lineage) %>% 
+                  select(-N)) %>% 
+    ggplot()+
+    geom_line(aes(date, p_tilde, group = pango))+
+    geom_ribbon(aes(date, ymin = .lower, ymax = .upper, group = pango), alpha = .1)+
+    geom_point(aes(date, p, color = n))+
+    facet_wrap(~pango)+
+    scale_y_log10() 
+
+
+preds %>% 
+    left_join(names %>% 
+                  rename(j = i)) %>% 
+    left_join(dates) %>% 
+    left_join(df %>% 
+                  group_by(t) %>% 
+                  mutate(N = sum(n)) %>% 
+                  ungroup() %>% 
+                  mutate(p = n/N) %>% 
+                  rename(pango = pangolin_lineage) %>% 
+                  select(-N)) %>% 
+    ggplot()+
+    geom_line(aes(date, p_tilde, group = pango))+
+    geom_ribbon(aes(date, ymin = .lower, ymax = .upper, group = pango), alpha = .1)+
+    geom_point(aes(date, p, color = n))+
+    facet_wrap(~pango)
+
+
+
+
+# Fit simple MLE ----------------------------------------------------------
+
+X[,2] <- X[,2] * (1 / X[1,2])
+fit.mle <- nnet::multinom(Y ~ as.matrix(X))
+
+names <- tibble(i = 1:(ncat - 1),
+                pango = df %>% filter(pangolin_lineage != most_prevalant_linage) %>% pull(pangolin_lineage) %>% unique(),
+                mle = coef(fit.mle)[,3],
+                N = df %>% filter(pangolin_lineage != most_prevalant_linage) %>% group_by(pangolin_lineage) %>% summarize(N = sum(n)) %>% pull(N))
+
+stanfit %>% 
+    spread_draws(r[i]) %>% 
+    mean_qi %>% 
+    left_join(names) %>% 
+    ggplot(aes(color = log10(N)))+
+    geom_point(aes(x = pango, y = r))+
+    geom_linerange(aes(x = pango, ymin = .lower, ymax = .upper))+
+    geom_point(aes(x = pango, y = mle), shape = 2)
+
+
+# LOO CV ---------------------------------------------------------------------
+
+log_lik_1 <- extract_log_lik(stanfit, merge_chains = FALSE)
+
+# as of loo v2.0.0 we can optionally provide relative effective sample sizes
+# when calling loo, which allows for better estimates of the PSIS effective
+# sample sizes and Monte Carlo error
+r_eff <- relative_eff(exp(log_lik_1), cores = 4) 
+
+# preferably use more than 2 cores (as many cores as possible)
+# will use value of 'mc.cores' option if cores is not specified
+loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 4)
+print(loo_1)
+plot(loo_1, diagnostic = "n_eff", label_points = T)
+plot(loo_1, diagnostic = "k", label_points = T)
+
+log_lik_2 <- extract_log_lik(stanfit_wide, merge_chains = FALSE)
+
+# as of loo v2.0.0 we can optionally provide relative effective sample sizes
+# when calling loo, which allows for better estimates of the PSIS effective
+# sample sizes and Monte Carlo error
+r_eff <- relative_eff(exp(log_lik_2), cores = 4) 
+
+# preferably use more than 2 cores (as many cores as possible)
+# will use value of 'mc.cores' option if cores is not specified
+loo_2 <- loo(log_lik_2, r_eff = r_eff, cores = 4)
+print(loo_1)
+plot(loo_2, diagnostic = "n_eff", label_points = T)
+plot(loo_2, diagnostic = "k", label_points = T)
+
+log_lik_3 <- extract_log_lik(stanfit_random, merge_chains = FALSE)
+
+# as of loo v2.0.0 we can optionally provide relative effective sample sizes
+# when calling loo, which allows for better estimates of the PSIS effective
+# sample sizes and Monte Carlo error
+r_eff <- relative_eff(exp(log_lik_3), cores = 4) 
+
+# preferably use more than 2 cores (as many cores as possible)
+# will use value of 'mc.cores' option if cores is not specified
+loo_3 <- loo(log_lik_3, r_eff = r_eff, cores = 4)
+print(loo_3)
+plot(loo_3, diagnostic = "n_eff", label_points = T)
+plot(loo_3, diagnostic = "k", label_points = T)
+
+print(loo_compare(loo_1, loo_3))
+
+# no residual pattern in tau
+
+tau <- stanfit_random %>% 
+    spread_draws(tau[i]) %>% 
+    mean_qi()
+
+tau %>% 
+    ggplot(aes(i, tau))+
+    geom_point()
+tau %>% 
+    ggplot(aes(tau))+
+    geom_histogram()
+
+# no bias in intercepts
+
+b0_reduced <- stanfit %>% 
+    spread_draws(b0[i]) %>% 
+    mean_qi()
+
+b0_full <- stanfit_random %>% 
+    spread_draws(b0[i]) %>% 
+    mean_qi()
+
+colnames(b0_full) <- paste0(colnames(b0_full), '_tau')
+
+b0_full %>% 
+    rename(i = i_tau) %>% 
+    left_join(b0_reduced) %>% 
+    ggplot(aes(b0, b0_tau))+
+    geom_point()+
+    geom_abline()
+
+# no bias in slopes 
+
+r_reduced <- stanfit %>% 
+    spread_draws(r[i]) %>% 
+    mean_qi()
+
+r_full <- stanfit_random %>% 
+    spread_draws(r[i]) %>% 
+    mean_qi()
+
+colnames(r_full) <- paste0(colnames(r_full), '_tau')
+
+r_full %>% 
+    rename(i = i_tau) %>% 
+    left_join(r_reduced) %>% 
+    ggplot(aes(r, r_tau))+
+    geom_point()+
+    geom_abline()+
+    geom_smooth(method = 'lm')
+
+r_full %>% 
+    mutate(type = 'tau') %>% 
+    full_join(r_reduced %>% mutate(type = 'base')) %>% 
+    ggplot()+
+    geom_point(aes(x = i, y = r, color = type), position = position_dodge(width = .3))+
+    geom_linerange(aes(x = i, ymin = .lower, ymax = .upper, color = type), position = position_dodge(width = .3))
+
+print(stanfit, pars = c('mu_hierarchical', 'sigma_hierarchical'))
+print(stanfit_random, pars = c('mu_hierarchical', 'sigma_hierarchical'))
+
+# TODO: ADD t**2 to model as main effect
+
+preds %>% 
+    ggplot(aes(i, p_tilde))+
+    geom_area()
+

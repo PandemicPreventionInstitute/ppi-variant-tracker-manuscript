@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# This script assumes that the cmdstan directory is located in the home 
+# directory
+
+# Save the current working directory
+cwd=$(pwd)
+
+# Move to the stancode directory
+cd "$cwd"/code/stancode || exit 1
+
+# If the model was previously compiled into a C++ executable, delete it
+[ -e "$cwd"/code/stancode/multivariate_variant_multinomial_ncp ] \
+&& rm "$cwd"/code/stancode/multivariate_variant_multinomial_ncp
+
+# And same with the header file
+[ -e "$cwd"/code/stancode/multivariate_variant_multinomial_ncp.hpp ] \
+&& rm "$cwd"/code/stancode/multivariate_variant_multinomial_ncp.hpp
+
+# Move to the cmdstan directory (assumed to be in $HOME)
+cd ~/cmdstan || exit 1
+
+# Compile the model
+make STANCFLAGS+=--O1 "$cwd"/code/stancode/multivariate_variant_multinomial_ncp 
+
+# Return to the original directory
+cd "$cwd" || exit 1
+
+exit 0
