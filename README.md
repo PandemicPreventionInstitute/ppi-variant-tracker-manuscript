@@ -43,7 +43,7 @@ We thank GISAID for making this data publicly available.
    (model estimated observed sequences of each lineage) get summarized for each reference 
    date. Those are saved here: `../data/output/multicountry_output/validation/
    p_hat_{reference_date}.csv and `../data/output/multicountry_output/validation/
-   Y_tilde_{reference_date}.csv
+   Y_tilde_{reference_date}.csv`
  5. Run `historical_validation_code/process_results_from_stansummary_HV.R which loads in
    the lineage-country-timepoints from each reference date, and the summarized model
    estimated variant dynamics, joining them together so that the countries and lineages
