@@ -57,7 +57,7 @@ We thank GISAID for making this data publicly available.
    `../data/processed/validation_data/country_lineage_metrics_{reference_date}.csv`. 
    This script also generates the summary stats and full posterior distributions of the 
    relative fitness advantage estimates at the country (`../data/processed/validation_data/
-   `r_summary_{reference_date}.csv` and `../data/processed/validation_data/r_distrib_
+   r_summary_{reference_date}.csv` and `../data/processed/validation_data/r_distrib_
    {reference_date}.csv`) and at the global level (`../data/processed/validation_data/
    mu_hat_{reference_date}.csv` and `../data/processed/validation_data/mu_distrib_
    {reference_date}.csv`).
