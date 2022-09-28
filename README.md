@@ -29,7 +29,7 @@ We thank GISAID for making this data publicly available.
    shell_scripts.R` which reads in the reference date json objects `../data/processed
    /validation_data/data_for_cmdstan_{reference_date}.json`, resets the directory
    to the ppi-variant-tracker-manuscript folder, runs `run_cmdstan_HV.sh` which runs
-   each model (takes about 4 hours on Mac OS XXX for each reference dataset). See the 
+   each model (takes about 4 hours on Apple M1 Max for each reference dataset). See the 
    next section for more information on how to get the model set up in 
    `cmdstan`. We **strongly** recommend using `cmdstan` or, if not on an M1 
    Mac `CmdStanR`, over RStan because of some improvements in Stan's HMC 
@@ -44,7 +44,7 @@ We thank GISAID for making this data publicly available.
    date. Those are saved here: `../data/output/multicountry_output/validation/
    p_hat_{reference_date}.csv` and `../data/output/multicountry_output/validation/
    Y_tilde_{reference_date}.csv`
- 5. Run `historical_validation_code/process_results_from_stansummary_HV.R which loads in
+ 5. Run `historical_validation_code/process_results_from_stansummary_HV.R` which loads in
    the lineage-country-timepoints from each reference date, and the summarized model
    estimated variant dynamics, joining them together so that the countries and lineages
    are properly matched. It generates a time stamped `../data/processed/validation_data/
