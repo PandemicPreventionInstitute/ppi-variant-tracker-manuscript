@@ -1,6 +1,6 @@
 # This file generates the proposed Figure 3 for the variant tracker paper
 
-here::i_am('code/figure_3.R')
+here::i_am('code/figures.R')
 
 # Libraries ---------------------------------------------------------------
 rm(list = ls())
@@ -72,9 +72,11 @@ capacity_colors = c('Top 10%' = pal_capacity[3],
                     'Bottom 90%' = pal_capacity[4])
 
 model_colors <-c('Multicountry' = pal[12],
-                 'MLE' = 'seagreen' )
+                 #'MLE' = 'seagreen',
+                 'Single country' = 'seagreen')
 model_colors_muted <-c('Multicountry' = pal[2],
-                       'MLE' = 'darkseagreen' )
+                       #'MLE' = 'darkseagreen',
+                       'Single country' = 'darkseagreen')
 
 # Shared figure settings --------------------------------------------------
 
@@ -93,7 +95,7 @@ world %>%
   select(adm0_a3, name, geometry) %>% 
   rename(iso3c = adm0_a3)
 
-df <- read_csv('data/2022-07-01_metadata.csv')
+df <- read_csv('../data/raw/2022-07-01_metadata.csv')
 
 # Prep data for fig -------------------------------------------------------
 
@@ -581,12 +583,12 @@ lineage_colors <- c('BA.1' = pal[10],
 # Load data ---------------------------------------------------------------
 
 #setwd(here::here("code"))
-clean_global_df <- read_csv('data/processed/clean_global_df_2022-07-01.csv') %>% 
+clean_global_df <- read_csv('../data/processed/validation_data/clean_global_df_2022-07-01.csv') %>% 
     filter(collection_date <= ymd("2022-07-01"))
-r_summary <- read_csv('data/processed/r_summary_2022-07-01.csv')
-mu_all <- read.csv('data/processed/multicountry_mu_distrib_2022-07-01.csv')
-variant_t <-read_csv('data/processed/variant_t_2022-07-01.csv')
-variant_draws <-read_csv('data/processed/multicountry_model_pred_p_2022-07-01.csv') %>% 
+r_summary <- read_csv('../data/processed/validation_data/r_summary_2022-07-01.csv')
+mu_all <- read.csv('../data/processed/multicountry_mu_distrib_2022-07-01.csv')
+variant_t <-read_csv('../data/processed/variant_t_2022-07-01.csv')
+variant_draws <-read_csv('../data/processed/multicountry_model_pred_p_2022-07-01.csv') %>% 
     filter(date <= ymd("2022-07-01"))
 
 
@@ -828,7 +830,7 @@ cleaned_metrics_MLE <- country_metrics %>%
            BS_mean_period = BS_mean_period_MLE,
            BS_lb_period = BS_lb_period_MLE,
            BS_ub_period = BS_ub_period_MLE) %>% 
-    mutate( model = 'MLE')
+    mutate( model = 'Single country')
 cleaned_metrics <- bind_rows(cleaned_metrics_MC, cleaned_metrics_MLE)
 cleaned_metrics <- cleaned_metrics %>% left_join(cleaned_metrics %>% group_by(reference_date) %>% 
                                                      summarise(n = n()) %>% 
@@ -909,12 +911,12 @@ country_seq <- country_df  %>%
     mutate(seq = log10(N)) %>% 
     select(collection_date, reference_date, seq) %>% 
     distinct() %>% 
-    mutate(method = 'MLE')
+    mutate(method = 'Single country')
 
 # Create data to make the top panel
 seq_numbers <- bind_rows(global_seq, country_seq)
-seq_numbers$method <- factor(seq_numbers$method, levels = c("Multicountry", "MLE"))
-seq_summary <- seq_numbers %>% filter(method == 'MLE') 
+seq_numbers$method <- factor(seq_numbers$method, levels = c("Multicountry", "Single country"))
+seq_summary <- seq_numbers %>% filter(method == 'Single country') 
 ref_dates<-unique(seq_summary$reference_date)
 df<- c()
 for (i in 1:length(ref_dates)){
@@ -935,7 +937,7 @@ test1 <- country_df %>% select( collection_date,mid_week_date_recent, mid_week_p
            p_hat_lb = p_hat_MLE_lb,
            p_hat_ub = p_hat_MLE_ub) %>% 
     left_join(df, by = 'reference_date') %>% 
-    mutate(method = 'MLE',
+    mutate(method = 'Single country',
            period = ifelse(collection_date <= last_date_w_obs_seq, 'calibration', 'forecast'))
 test2<- country_df %>% select(collection_date,mid_week_date_recent, mid_week_prev_recent, mid_week_prev_se_recent,
                                      mid_week_date, mid_week_p_lineage, mid_week_p_lineage_se, multicountry_period,
@@ -945,7 +947,7 @@ test2<- country_df %>% select(collection_date,mid_week_date_recent, mid_week_pre
                          period = ifelse(multicountry_period == 'multicountry calibration', 'calibration', 'forecast'))
 test <- bind_rows(test1, test2)
     
-test$method <- factor(test$method, levels = c("Multicountry", "MLE"))
+test$method <- factor(test$method, levels = c("Multicountry", "Single country"))
 
 
    
@@ -1075,7 +1077,7 @@ fig4addbottom<- r_summary %>% filter(lineage %in% lineages, country %in% countri
           axis.title = element_text(size = axis_title_size),
           plot.tag = element_text(size = tag_size),
           strip.background =element_rect(fill="white"))+
-    ggtitle('MLE model')
+    ggtitle('Single country model')
 fig4addbottom
 heatmaps <- ggarrange(fig4addtop, fig4addbottom, ncol = 2, common.legend = T, legend = 'bottom', align = 'h')
 
@@ -1091,7 +1093,7 @@ fig
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_big.png', 
+ggsave('../data/output/figures/figure_4_Portugal_BA5_12_04.png', 
        plot = fig,
        width = 21,
        height = 15)
@@ -1165,13 +1167,13 @@ sfig4MLEPortugalBA5 <- r_comb %>%
          y = 'Weekly fitness advantage of BA.5 relative to BA.2',
          fill = '',
          tag = 'B') +
-    ggtitle('Portugal BA.5 MLE model')
+    ggtitle('Portugal BA.5 single country model')
 sfig4MLEPortugalBA5
 
 sfig4 <- ggarrange(sfig4MCPortugalBA5, sfig4MLEPortugalBA5, ncol = 2, nrow = 1, align = 'v')
 sfig4
 
-ggsave('../data/output/figures/sfigure_Portugal_BA5_r.png', 
+ggsave('../data/output/figures/SFIG2_BS.png', 
        plot = sfig4,
        width = 12,
        height = 6)
@@ -1201,7 +1203,7 @@ sfigMLEPortugalBA5_normapprox <- r_comb %>%
          y = 'Weekly fitness advantage of BA.5 relative to BA.2',
          fill = '',
          tag = 'B') +
-    ggtitle('MLE model')
+    ggtitle('Single country model')
 sfigMLEPortugalBA5_normapprox
 
 
@@ -1239,7 +1241,7 @@ sfig4_norm_approx <- ggarrange(sfigMCPortugalBA5_normapprox, sfigMLEPortugalBA5_
 sfig4_norm_approx
 
 
-ggsave('../data/output/figures/sfigure_Portugal_BA5_r_norm_approx.png', 
+ggsave('../data/output/figures/SFIG2.png', 
        plot = sfig4_norm_approx,
        width = 12,
        height = 6)
@@ -1250,6 +1252,7 @@ ggsave('../data/output/figures/sfigure_Portugal_BA5_r_norm_approx.png',
 # Supplementary Figure: Brier scores for calibration and forecast periods
 
 dodge<- position_dodge(width = 0.2)
+
 calib_metrics<- cleaned_metrics %>% filter(country == this_country, multicountry_period == 'multicountry calibration')
 forecast_metrics<- cleaned_metrics %>% filter(country == this_country, multicountry_period == 'multicountry forecast') 
 sfigBScalib<- ggplot()+
@@ -1301,6 +1304,7 @@ sfigBSperiod<- ggarrange(sfigBScalib, sfigBSforecast, ncol = 2, nrow = 1,
                     align = "v")
 sfigBSperiod
 
+# Not currently a part of the manuscript but we could add in 
 ggsave('../data/output/figures/sfigure_Portugal_BA5_BS.png', 
        plot = sfigBSperiod,
        width = 12,
@@ -1355,14 +1359,14 @@ sfigrheatmapMLE<- r_summary %>% filter(lineage %in% lineages, country %in% count
           axis.title = element_text(size = axis_title_size),
           plot.tag = element_text(size = tag_size),
           strip.background =element_rect(fill="white"))+
-    ggtitle('MLE model')
+    ggtitle('Single country model')
 sfigrheatmapMLE
 design <- "
   12
 "
 fig <- sfigrheatmapMC + sfigrheatmapMLE +plot_layout(design = design)
 
-ggsave('../data/output/figures/sfigr_heatmap.png', 
+ggsave('../data/output/figures/SFIG3.png', 
        plot = fig,
        width = 10,
        height = 5)
@@ -1405,7 +1409,7 @@ sfig4a
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/sfig4a.png', 
+ggsave('../data/output/figures/SFIG1.png', 
        plot = sfig4a,
        width = 15,
        height = 6)

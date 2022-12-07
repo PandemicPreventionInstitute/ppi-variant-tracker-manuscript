@@ -39,12 +39,12 @@ if (USE_CASE == 'local'){
     MOST_RECENT_R_SUMMARY_PATH <- '../data/processed/validation_data/r_summary_2022-07-01.csv'
     MOST_RECENT_CLEAN_GLOBAL_DF_PATH <- '../data/processed/validation_data/clean_global_df_2022-07-01.csv'
     MOST_RECENT_MU_HAT_PATH <- '../data/processed/validation_data/mu_hat_2022-07-01.csv'
-    MLE_FIT_PATH <- '../data/processed/validation_data/MLE_t_dbx.csv' # contains subset of countries, all data
-    MLE_REGRESSORS_PATH <- '../data/processed/validation_data/MLE_regressors_dbx.csv'
+    MLE_FIT_PATH <- '../data/processed/validation_data/MLE_t.csv' # contains subset of countries, all data
+    MLE_REGRESSORS_PATH <- '../data/processed/validation_data/MLE_regressors.csv'
     COUNTRIES_FIT_TO_MLE <- '../data/processed/validation_data/countries_fit_to_MLE.csv'
-    MLE_METRICS_PATH <- '../data/processed/validation_data/country_metrics_MLE_dbx.csv'
-    MLE_LINEAGE_METRICS_PATH <- '../data/processed/validation_data/country_lineage_metrics_MLE_dbx.csv'
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code")
+    MLE_METRICS_PATH <- '../data/processed/validation_data/country_metrics_MLE.csv'
+    MLE_LINEAGE_METRICS_PATH <- '../data/processed/validation_data/country_lineage_metrics_MLE.csv'
+    #setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code")
 } 
 
 # Load reference dates & most recent data --------------------------------------
@@ -115,7 +115,7 @@ for (i in 1:nrow(reference_data_df)){
     
 
         # Left join the MLE estimated prevalence over time 
-        this_mle_t <- mle_t %>% filter(reference_date == THIS_REF_DATE) %>% select(-reference_date, -N)
+        this_mle_t <- mle_t %>% filter(reference_date == THIS_REF_DATE) %>% select(-reference_date)
         this_clean_global_df <- left_join(this_clean_global_df, this_mle_t, by = c("country", "lineage", "t"))
         
         # Left join the Brier score and CCC metrics 
