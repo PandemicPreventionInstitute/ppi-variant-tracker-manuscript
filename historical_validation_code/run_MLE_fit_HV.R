@@ -531,7 +531,6 @@ country_lineage_metrics$reference_date <- ymd(country_lineage_metrics$reference_
 
 # Save the concatenated output for merging into the evaluation-----------------
 
-
 # p_hat with upper and lower bounds for each lineage-country-time point
 write.csv(MLE_t, '../data/processed/validation_data/MLE_t.csv', row.names = F)
 # fitness advantage estimates with upper and lower bounds for each lineage-country

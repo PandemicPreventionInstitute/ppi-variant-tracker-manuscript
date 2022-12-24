@@ -554,7 +554,7 @@ design <- "
 
 fig <- p1 + p2 + p4 + plot_layout(design = design)
 
-ggsave('data/output/figures/figure_1.png', 
+ggsave('../data/output/figures/figure_1.tiff', 
        plot = fig,
        width = 15,
        height = 8)
@@ -562,15 +562,6 @@ ggsave('data/output/figures/figure_1.png',
   
 # Figure 3 ----------------------------------------------------------------
 
-countries<- c('Bangladesh', 
-              'Brazil', 
-              'Denmark', 
-              'India', 
-              'Portugal', 
-              'Senegal', 
-              'South Africa', 
-              'United Kingdom', 
-              'United States')
 
 lineage_colors <- c('BA.1' = pal[10],
                     'BA.2.12.1' = pal[4],
@@ -768,7 +759,7 @@ fig <- p1 + p2 + p3 + plot_layout(design = design)
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('data/output/figures/figure_3.png', 
+ggsave('../data/output/figures/figure_3.pdf', 
        plot = fig,
        width = 15,
        height = 8)
@@ -852,8 +843,8 @@ r_comb<- r_distrib %>%
                                             trans_adv_MLE_mean,
                                             trans_adv_MLE_lb,
                                             trans_adv_MLE_ub,
-                                            trans_adv_normal_approx_lb,
-                                            trans_adv_normal_approx_ub,
+                                            #trans_adv_normal_approx_lb,
+                                            #trans_adv_normal_approx_ub,
                                             global_trans_adv_median,
                                             global_trans_adv_lb,
                                             global_trans_adv_ub,),
@@ -1093,14 +1084,36 @@ fig
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_12_04.png', 
+ggsave('../data/output/figures/figure_4_Portugal_BA5_12_04.pdf', 
        plot = fig,
        width = 21,
        height = 15)
 
+table<- r_summary %>% filter(lineage %in% lineages, country %in% countries) %>% 
+    select(country, lineage, n_seq_lineage_country, r_MLE_mean) %>% filter(is.na(r_MLE_mean))
 
-
-
+# Quick plot on number of sequences of a lineage in a country to compare
+fig_seq_nums<- r_summary %>% filter(lineage %in% lineages, country %in% countries) %>% 
+    ggplot() + geom_tile(aes(x = as.factor(num), y = lineage, fill = log10(n_seq_lineage_country))) +
+    facet_wrap(~country, ncol = 3)+
+    labs(x = 'Reference date',
+         y = 'Lineage',
+         fill = 'log10(N)')+
+    # scale_fill_gradientn(colours = pal2,
+    #                      na.value = "lightgray", guide = "colourbar", aesthetics = "fill",
+    #                      breaks=c(0, 5,100,1000,2000), labels=c(0,5,100,1000,2000))+
+    theme_bw()+
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    theme(aspect.ratio = 1,
+          axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle = -45, hjust=0, vjust = 0.5, 
+                                     size = 0.7*axis_text_size),
+          #axis.text.y = element_blank(),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = 0.5*tag_size),
+          strip.background =element_rect(fill="white"))+
+    ggtitle('Single country model')
+fig_seq_nums
 
 
 
@@ -1173,7 +1186,7 @@ sfig4MLEPortugalBA5
 sfig4 <- ggarrange(sfig4MCPortugalBA5, sfig4MLEPortugalBA5, ncol = 2, nrow = 1, align = 'v')
 sfig4
 
-ggsave('../data/output/figures/SFIG2_BS.png', 
+ggsave('../data/output/figures/SFIG2_BS.pdf', 
        plot = sfig4,
        width = 12,
        height = 6)
@@ -1366,7 +1379,7 @@ design <- "
 "
 fig <- sfigrheatmapMC + sfigrheatmapMLE +plot_layout(design = design)
 
-ggsave('../data/output/figures/SFIG3.png', 
+ggsave('../data/output/figures/SFIG3.pdf', 
        plot = fig,
        width = 10,
        height = 5)
@@ -1409,7 +1422,7 @@ sfig4a
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/SFIG1.png', 
+ggsave('../data/output/figures/SFIG1.pdf', 
        plot = sfig4a,
        width = 15,
        height = 6)

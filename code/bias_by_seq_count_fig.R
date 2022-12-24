@@ -40,7 +40,7 @@ df %>%
        x = TeX(r"(Cumulative country-variant-day sequences ($log_{10}$))"),
        fill = element_blank())
 
-ggsave('../data/output/figures/SFIG4_new.png',
+ggsave('../data/output/figures/SFIG4_new.pdf',
        width = 10,
        height = 6)
 
@@ -77,7 +77,7 @@ df %>%
        x = TeX(r"(Cumulative country-variant-day sequences ($log_{10}$))"),
        fill = element_blank())
   
-ggsave('../data/output/figures/SFIG5.png',
+ggsave('../data/output/figures/SFIG5.pdf',
        width = 10,
        height = 6)
 
@@ -108,7 +108,7 @@ mu %>%
   labs(x = element_blank(),
        y = 'Estimated global mean fitness advantage\nfrom multicountry model')
 
-ggsave('../data/output/figures/SFIG6.png',
+ggsave('../data/output/figures/SFIG6.pdf',
        width = 10,
        height = 6)
 
