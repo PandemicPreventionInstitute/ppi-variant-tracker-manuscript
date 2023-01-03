@@ -180,6 +180,12 @@ country_early <- country_metrics %>%
     arrange(desc(BS_improvement)) %>% 
   relocate(BS_improvement, .before = multicountry_period)
 
+# Find the number of sequences per country lineage and join it to the r_summary data
+n_seq_country_lineage<- clean_global_df %>% group_by(country, lineage, reference_date) %>%
+    summarise(n_seq_lineage_country = sum(n, na.rm = T))
+# Join with r_summary
+r_summary <- r_summary %>% left_join(n_seq_country_lineage, by = c('reference_date', 'country', 'lineage'))
+
 # Save all the files 
 if (USE_CASE == 'local'){
   write.csv(r_summary, '../data/output/validation/r_summary.csv', row.names = F)
