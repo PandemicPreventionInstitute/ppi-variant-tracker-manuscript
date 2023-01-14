@@ -1,8 +1,4 @@
 # Databricks notebook source
-# MAGIC %fs mkdirs dbfs:/mnt/ppi-test/validation/spline_fits/brier_score/
-
-# COMMAND ----------
-
 # Add code to install arrow package 
 # fast install from https://arrow.apache.org/docs/r/articles/install.html#method-1a---binary-r-package-containing-libarrow-binary-via-rspmconda
 options(
@@ -37,7 +33,7 @@ reference_dates <- c('2022-04-30', '2022-05-16', '2022-05-27', '2022-06-04', '20
 
 # COMMAND ----------
 
-install.packages(c('RcppArmadillo', 'tidyverse', 'countrycode', 'emmeans'))
+install.packages(c('tidyverse', 'countrycode', 'emmeans'))
 
 # COMMAND ----------
 
@@ -46,6 +42,7 @@ library(lubridate)
 library(countrycode)
 library(emmeans)
 library(arrow)
+library(splines)
 
 # COMMAND ----------
 
