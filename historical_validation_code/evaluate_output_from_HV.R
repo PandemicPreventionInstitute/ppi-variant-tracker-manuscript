@@ -31,6 +31,7 @@ library(readr) # read_csv
 library(lme4) # logistic regression
 library(gridExtra)
 library(grid)
+library(philentropy) # for calculating JS diveregence across time in mu distribution
 
 
 # Constants ---------------------------------------------------
@@ -185,6 +186,25 @@ n_seq_country_lineage<- clean_global_df %>% group_by(country, lineage, reference
     summarise(n_seq_lineage_country = sum(n, na.rm = T))
 # Join with r_summary
 r_summary <- r_summary %>% left_join(n_seq_country_lineage, by = c('reference_date', 'country', 'lineage'))
+
+
+# Get Jensen-Shannon Divergence between the BA.5 global fitness advantage distributions
+BA.5_distrib <- mu_distrib %>% filter(lineage == 'BA.5')
+ref_date_1 <- BA.5_distrib %>% filter(reference_date == '2022-04-30') %>% pull(global_transmission_advantage)
+ref_date_2 <- BA.5_distrib %>% filter(reference_date == '2022-05-16') %>% pull(global_transmission_advantage)
+ref_date_3 <- BA.5_distrib %>% filter(reference_date == '2022-05-27') %>% pull(global_transmission_advantage)
+ref_date_4 <- BA.5_distrib %>% filter(reference_date == '2022-06-04') %>% pull(global_transmission_advantage)
+ref_date_5 <- BA.5_distrib %>% filter(reference_date == '2022-06-27') %>% pull(global_transmission_advantage)
+x <- rbind(ref_date_1, ref_date_2, ref_date_3, ref_date_4, ref_date_5) # These are not probability distributions, they are posterior distributions of the value of mu_hierarchical
+JSD(x, est.prob = "empirical") # Therefore, we need est.prob = "empirical" to transform to probability distributions 
+JSDMatrix <- heatmap(JSD(x, est.prob = "empirical"))
+JSDMatrix
+
+
+
+
+
+
 
 # Save all the files 
 if (USE_CASE == 'local'){
