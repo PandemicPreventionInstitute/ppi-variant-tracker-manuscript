@@ -893,57 +893,59 @@ fig4global
 # Portugal BA.5-------------------------------------------------
 
 this_country<- 'Portugal'
-global_seq<- clean_global_df %>% group_by(collection_date, reference_date) %>% 
-                  summarise(seq = log10(sum(N, na.rm = T))) %>% 
-    ungroup() %>% 
-    mutate(method = 'Multicountry')
-country_df<-clean_global_df %>% filter(country == this_country, lineage == "BA.5")
-country_seq <- country_df  %>% 
-    mutate(seq = log10(N)) %>% 
-    select(collection_date, reference_date, seq) %>% 
-    distinct() %>% 
-    mutate(method = 'Single country')
 
-# Create data to make the top panel
-seq_numbers <- bind_rows(global_seq, country_seq)
-seq_numbers$method <- factor(seq_numbers$method, levels = c("Multicountry", "Single country"))
-seq_summary <- seq_numbers %>% filter(method == 'Single country') 
-ref_dates<-unique(seq_summary$reference_date)
-df<- c()
-for (i in 1:length(ref_dates)){
-    subset<- seq_summary %>% filter(reference_date == ref_dates[i])
-    reference_date <- ref_dates[i]
-    last_date_w_obs_seq <- max(subset$collection_date[subset$seq>0], na.rm = T)
-    dfi <- data.frame(reference_date, last_date_w_obs_seq)
-    df<-bind_rows(df, dfi)
-}
-
-
-
-
-test1 <- country_df %>% select( collection_date,mid_week_date_recent, mid_week_prev_recent, mid_week_prev_se_recent,
-                                     mid_week_date, mid_week_p_lineage, mid_week_p_lineage_se, multicountry_period,
-                                     reference_date, p_hat_MLE_mean, p_hat_MLE_lb, p_hat_MLE_ub) %>% 
-    rename(p_hat_mean = p_hat_MLE_mean,
-           p_hat_lb = p_hat_MLE_lb,
-           p_hat_ub = p_hat_MLE_ub) %>% 
-    left_join(df, by = 'reference_date') %>% 
-    mutate(method = 'Single country',
-           period = ifelse(collection_date <= last_date_w_obs_seq, 'calibration', 'forecast'))
-test2<- country_df %>% select(collection_date,mid_week_date_recent, mid_week_prev_recent, mid_week_prev_se_recent,
-                                     mid_week_date, mid_week_p_lineage, mid_week_p_lineage_se, multicountry_period,
-                                     reference_date, p_hat_mean, p_hat_lb, p_hat_ub) %>% 
-                  left_join(df, by = 'reference_date') %>% 
-                  mutate(method = 'Multicountry',
-                         period = ifelse(multicountry_period == 'multicountry calibration', 'calibration', 'forecast'))
-test <- bind_rows(test1, test2)
+get_single_country_metrics <- function(this_country){
+    global_seq<- clean_global_df %>% group_by(collection_date, reference_date) %>% 
+        summarise(seq = log10(sum(N, na.rm = T))) %>% 
+        ungroup() %>% 
+        mutate(method = 'Multicountry')
+    country_df<-clean_global_df %>% filter(country == this_country, lineage == "BA.5")
+    country_seq <- country_df  %>% 
+        mutate(seq = log10(N)) %>% 
+        select(collection_date, reference_date, seq) %>% 
+        distinct() %>% 
+        mutate(method = 'Single country')
     
-test$method <- factor(test$method, levels = c("Multicountry", "Single country"))
-
-
-   
-calib_df<- test %>% filter(period == 'calibration' )
-forecast_df <- test %>% filter(period == 'forecast')
+    # Create data to make the top panel
+    seq_numbers <- bind_rows(global_seq, country_seq)
+    seq_numbers$method <- factor(seq_numbers$method, levels = c("Multicountry", "Single country"))
+    seq_summary <- seq_numbers %>% filter(method == 'Single country') 
+    ref_dates<-unique(seq_summary$reference_date)
+    df<- c()
+    for (i in 1:length(ref_dates)){
+        subset<- seq_summary %>% filter(reference_date == ref_dates[i])
+        reference_date <- ref_dates[i]
+        last_date_w_obs_seq <- max(subset$collection_date[subset$seq>0], na.rm = T)
+        dfi <- data.frame(reference_date, last_date_w_obs_seq)
+        df<-bind_rows(df, dfi)
+    }
+    
+    
+    
+    single_country_df <- country_df %>% select( collection_date,mid_week_date_recent, mid_week_prev_recent, mid_week_prev_se_recent,
+                                                mid_week_date, mid_week_p_lineage, mid_week_p_lineage_se, multicountry_period,
+                                                reference_date, p_hat_MLE_mean, p_hat_MLE_lb, p_hat_MLE_ub) %>% 
+        rename(p_hat_mean = p_hat_MLE_mean,
+               p_hat_lb = p_hat_MLE_lb,
+               p_hat_ub = p_hat_MLE_ub) %>% 
+        left_join(df, by = 'reference_date') %>% 
+        mutate(method = 'Single country',
+               period = ifelse(collection_date <= last_date_w_obs_seq, 'calibration', 'forecast'))
+    multicountry_df<- country_df %>% select(collection_date,mid_week_date_recent, mid_week_prev_recent, mid_week_prev_se_recent,
+                                            mid_week_date, mid_week_p_lineage, mid_week_p_lineage_se, multicountry_period,
+                                            reference_date, p_hat_mean, p_hat_lb, p_hat_ub) %>% 
+        left_join(df, by = 'reference_date') %>% 
+        mutate(method = 'Multicountry',
+               period = ifelse(multicountry_period == 'multicountry calibration', 'calibration', 'forecast'))
+    combined_df <- bind_rows(single_country_df, multicountry_df)
+    
+    combined_df$method <- factor(combined_df$method, levels = c("Multicountry", "Single country"))
+    
+    return(combined_df)
+}
+combined_df <- get_single_country_metrics(this_country)
+calib_df<- combined_df %>% filter(period == 'calibration' )
+forecast_df <- combined_df %>% filter(period == 'forecast')
 
 ggplot() + geom_col(data = seq_numbers, aes(x = collection_date, y = seq, fill = method))+ facet_grid(method~reference_date, scales = 'free')
 fig4a <- ggplot() +
@@ -1012,7 +1014,7 @@ fig4c<- ggplot()+
          fill = '',
          color = 'Model',
          tag = 'C') + 
-    ggtitle('Portugal BA.5')
+    ggtitle(paste0(this_country, ' BA.5'))
 fig4c
 
 # heatmaps!
@@ -1082,13 +1084,340 @@ fig <- fig4a + fig4global + fig4c + fig4addtop + fig4addbottom+
     plot_layout(design = design)
 fig
 
-# Save fig ----------------------------------------------------------------
+# Save main fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_12_04.pdf', 
+ggsave('../data/output/figures/figure_4_Portugal_BA5.pdf', 
        plot = fig,
        width = 21,
        height = 15)
 
+
+
+
+
+
+
+
+
+
+# Make a figure with panels A and C from a few different countries 
+list_of_countries <- c('Denmark', 'Czechia', 'Brazil', 'Spain')
+this_country <-list_of_countries[1]
+combined_df <- get_single_country_metrics(this_country)
+calib_df<- combined_df %>% filter(period == 'calibration' )
+forecast_df <- combined_df %>% filter(period == 'forecast')
+this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
+
+
+timeseries <- ggplot() +
+    geom_line(data = calib_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =1) +
+    geom_ribbon(data = calib_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.4, show.legend = F)+
+    geom_line(data = forecast_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =0.2, show.legend = F) +
+    geom_ribbon(data = forecast_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.2, show.legend = F)+
+    geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
+    geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
+                                          ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
+                  show.legend = F, alpha = 1)+
+    scale_xsidey_continuous(position = 'right',
+                            minor_breaks = NULL,
+                            n.breaks = 3,
+                            guide = guide_axis(TeX(r"(Number of collected sequences (log$_{10}$))")))+
+    facet_grid(method~reference_date)+
+    theme_bw()+ 
+    guides(colour = guide_legend(override.aes = list(alpha = 1,
+                                                     size = 4),
+                                 nrow = 1))+
+    theme(ggside.panel.scale = .3,
+          axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle =- 45, hjust=.6, vjust = 0.5, 
+                                     size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          strip.text = element_text(size = strip_text_size),
+          legend.title = element_text(size = 15), 
+          legend.text = element_text(size=15),
+          legend.position = "bottom",
+          strip.background =element_rect(fill="white"))+
+    scale_color_manual(values = model_colors)+
+    scale_fill_manual(values = model_colors)+
+    scale_x_date(date_labels = "%B %d")+
+    #coord_cartesian(ylim = c(0,1))+
+    labs(x = '',
+         y = 'BA.5 prevalence',
+         fill = '',
+         color = 'Method',
+         tag = 'A')+
+    ggtitle(paste0(this_country, ' BA.5'))
+timeseries
+
+
+Brier_score_comparison<- ggplot()+
+    geom_point(data = this_country_metrics, aes(x = as.factor(num), y = BS_mean, 
+                                                color = model), size = 3.5, position = dodge, show.legend = F) +
+    geom_linerange(data = this_country_metrics, aes(x = as.factor(num), ymin = BS_lb,
+                                                    ymax = BS_ub, color = model),size = 1.5, position = dodge, show.legend = F) +
+    theme_bw()+ 
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    #scale_y_sqrt()+
+    theme(axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle = -45, hjust=-.5, vjust = 2, size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          legend.position = "none")+
+    scale_color_manual(values = model_colors)+
+    #scale_x_date(date_labels = "%B %d", limits = c(ymd('2022-04-25'), ymd('2022-07-15')))+
+    labs(x = 'Reference date',
+         y = 'Brier score',
+         fill = '',
+         color = 'Model',
+         tag = 'B') + 
+    ggtitle(paste0(this_country, ' BA.5'))
+Brier_score_comparison 
+
+
+this_country <-list_of_countries[2]
+combined_df <- get_single_country_metrics(this_country)
+calib_df<- combined_df %>% filter(period == 'calibration' )
+forecast_df <- combined_df %>% filter(period == 'forecast')
+this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
+
+
+timeseries2 <- ggplot() +
+    geom_line(data = calib_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =1) +
+    geom_ribbon(data = calib_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.4, show.legend = F)+
+    geom_line(data = forecast_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =0.2, show.legend = F) +
+    geom_ribbon(data = forecast_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.2, show.legend = F)+
+    geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
+    geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
+                                          ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
+                  show.legend = F, alpha = 1)+
+    scale_xsidey_continuous(position = 'right',
+                            minor_breaks = NULL,
+                            n.breaks = 3,
+                            guide = guide_axis(TeX(r"(Number of collected sequences (log$_{10}$))")))+
+    facet_grid(method~reference_date)+
+    theme_bw()+ 
+    guides(colour = guide_legend(override.aes = list(alpha = 1,
+                                                     size = 4),
+                                 nrow = 1))+
+    theme(ggside.panel.scale = .3,
+          axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle =- 45, hjust=.6, vjust = 0.5, 
+                                     size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          strip.text = element_text(size = strip_text_size),
+          legend.title = element_text(size = 15), 
+          legend.text = element_text(size=15),
+          legend.position = "bottom",
+          strip.background =element_rect(fill="white"))+
+    scale_color_manual(values = model_colors)+
+    scale_fill_manual(values = model_colors)+
+    scale_x_date(date_labels = "%B %d")+
+    #coord_cartesian(ylim = c(0,1))+
+    labs(x = '',
+         y = 'BA.5 prevalence',
+         fill = '',
+         color = 'Method',
+         tag = 'C')+
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+
+Brier_score_comparison2<- ggplot()+
+    geom_point(data = this_country_metrics, aes(x = as.factor(num), y = BS_mean, 
+                                                color = model), size = 3.5, position = dodge, show.legend = F) +
+    geom_linerange(data = this_country_metrics, aes(x = as.factor(num), ymin = BS_lb,
+                                                    ymax = BS_ub, color = model),size = 1.5, position = dodge, show.legend = F) +
+    theme_bw()+ 
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    #scale_y_sqrt()+
+    theme(axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle = -45, hjust=-.5, vjust = 2, size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          legend.position = "none")+
+    scale_color_manual(values = model_colors)+
+    #scale_x_date(date_labels = "%B %d", limits = c(ymd('2022-04-25'), ymd('2022-07-15')))+
+    labs(x = 'Reference date',
+         y = 'Brier score',
+         fill = '',
+         color = 'Model',
+         tag = 'D') + 
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+this_country <-list_of_countries[3]
+combined_df <- get_single_country_metrics(this_country)
+calib_df<- combined_df %>% filter(period == 'calibration' )
+forecast_df <- combined_df %>% filter(period == 'forecast')
+this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
+
+
+timeseries3 <- ggplot() +
+    geom_line(data = calib_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =1) +
+    geom_ribbon(data = calib_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.4, show.legend = F)+
+    geom_line(data = forecast_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =0.2, show.legend = F) +
+    geom_ribbon(data = forecast_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.2, show.legend = F)+
+    geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
+    geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
+                                          ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
+                  show.legend = F, alpha = 1)+
+    scale_xsidey_continuous(position = 'right',
+                            minor_breaks = NULL,
+                            n.breaks = 3,
+                            guide = guide_axis(TeX(r"(Number of collected sequences (log$_{10}$))")))+
+    facet_grid(method~reference_date)+
+    theme_bw()+ 
+    guides(colour = guide_legend(override.aes = list(alpha = 1,
+                                                     size = 4),
+                                 nrow = 1))+
+    theme(ggside.panel.scale = .3,
+          axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle =- 45, hjust=.6, vjust = 0.5, 
+                                     size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          strip.text = element_text(size = strip_text_size),
+          legend.title = element_text(size = 15), 
+          legend.text = element_text(size=15),
+          legend.position = "bottom",
+          strip.background =element_rect(fill="white"))+
+    scale_color_manual(values = model_colors)+
+    scale_fill_manual(values = model_colors)+
+    scale_x_date(date_labels = "%B %d")+
+    #coord_cartesian(ylim = c(0,1))+
+    labs(x = '',
+         y = 'BA.5 prevalence',
+         fill = '',
+         color = 'Method',
+         tag = 'E')+
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+
+Brier_score_comparison3<- ggplot()+
+    geom_point(data = this_country_metrics, aes(x = as.factor(num), y = BS_mean, 
+                                                color = model), size = 3.5, position = dodge, show.legend = F) +
+    geom_linerange(data = this_country_metrics, aes(x = as.factor(num), ymin = BS_lb,
+                                                    ymax = BS_ub, color = model),size = 1.5, position = dodge, show.legend = F) +
+    theme_bw()+ 
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    #scale_y_sqrt()+
+    theme(axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle = -45, hjust=-.5, vjust = 2, size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          legend.position = "none")+
+    scale_color_manual(values = model_colors)+
+    #scale_x_date(date_labels = "%B %d", limits = c(ymd('2022-04-25'), ymd('2022-07-15')))+
+    labs(x = 'Reference date',
+         y = 'Brier score',
+         fill = '',
+         color = 'Model',
+         tag = 'F') + 
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+this_country <-list_of_countries[4]
+combined_df <- get_single_country_metrics(this_country)
+calib_df<- combined_df %>% filter(period == 'calibration' )
+forecast_df <- combined_df %>% filter(period == 'forecast')
+this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
+
+
+timeseries4 <- ggplot() +
+    geom_line(data = calib_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =1) +
+    geom_ribbon(data = calib_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.4, show.legend = F)+
+    geom_line(data = forecast_df, aes(x = ymd(collection_date), y = p_hat_mean, color = method), size =0.2, show.legend = F) +
+    geom_ribbon(data = forecast_df, aes(x = ymd(collection_date), ymin = p_hat_lb, ymax = p_hat_ub, fill = method), alpha = 0.2, show.legend = F)+
+    geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
+    geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
+                                          ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
+                  show.legend = F, alpha = 1)+
+    scale_xsidey_continuous(position = 'right',
+                            minor_breaks = NULL,
+                            n.breaks = 3,
+                            guide = guide_axis(TeX(r"(Number of collected sequences (log$_{10}$))")))+
+    facet_grid(method~reference_date)+
+    theme_bw()+ 
+    guides(colour = guide_legend(override.aes = list(alpha = 1,
+                                                     size = 4),
+                                 nrow = 1))+
+    theme(ggside.panel.scale = .3,
+          axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle =- 45, hjust=.6, vjust = 0.5, 
+                                     size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          strip.text = element_text(size = strip_text_size),
+          legend.title = element_text(size = 15), 
+          legend.text = element_text(size=15),
+          legend.position = "bottom",
+          strip.background =element_rect(fill="white"))+
+    scale_color_manual(values = model_colors)+
+    scale_fill_manual(values = model_colors)+
+    scale_x_date(date_labels = "%B %d")+
+    #coord_cartesian(ylim = c(0,1))+
+    labs(x = '',
+         y = 'BA.5 prevalence',
+         fill = '',
+         color = 'Method',
+         tag = 'G')+
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+
+Brier_score_comparison4<- ggplot()+
+    geom_point(data = this_country_metrics, aes(x = as.factor(num), y = BS_mean, 
+                                                color = model), size = 3.5, position = dodge, show.legend = F) +
+    geom_linerange(data = this_country_metrics, aes(x = as.factor(num), ymin = BS_lb,
+                                                    ymax = BS_ub, color = model),size = 1.5, position = dodge, show.legend = F) +
+    theme_bw()+ 
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    #scale_y_sqrt()+
+    theme(axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(angle = -45, hjust=-.5, vjust = 2, size = 0.7*axis_text_size),
+          axis.title = element_text(size = axis_title_size),
+          plot.tag = element_text(size = tag_size),
+          legend.position = "none")+
+    scale_color_manual(values = model_colors)+
+    #scale_x_date(date_labels = "%B %d", limits = c(ymd('2022-04-25'), ymd('2022-07-15')))+
+    labs(x = 'Reference date',
+         y = 'Brier score',
+         fill = '',
+         color = 'Model',
+         tag = 'H') + 
+    ggtitle(paste0(this_country, ' BA.5'))
+
+
+design <- "
+  111122
+  333344
+  555566
+  777788
+"
+
+fig <- timeseries + Brier_score_comparison +
+    timeseries2 + Brier_score_comparison2+
+    timeseries3 + Brier_score_comparison3 + 
+    timeseries4 + Brier_score_comparison4+
+    plot_layout(design = design)
+fig
+
+ggsave('../data/output/figures/multiple_countries_retro_eval.pdf', 
+       plot = fig,
+       width = 15,
+       height = 21)
+
+
+
+
+# Make a figure with sequence counts by country-lineage-timepoint
 table<- r_summary %>% filter(lineage %in% lineages, country %in% countries) %>% 
     select(country, lineage, n_seq_lineage_country, r_MLE_mean) %>% filter(is.na(r_MLE_mean))
 
@@ -1112,8 +1441,13 @@ fig_seq_nums<- r_summary %>% filter(lineage %in% lineages, country %in% countrie
           axis.title = element_text(size = axis_title_size),
           plot.tag = element_text(size = 0.5*tag_size),
           strip.background =element_rect(fill="white"))+
-    ggtitle('Single country model')
+    ggtitle('Number of sequences of each variant in each country over time')
 fig_seq_nums
+
+ggsave('../data/output/figures/Supp_figure_seq_counts.pdf', 
+       plot = fig_seq_nums,
+       width = 8,
+       height = 8)
 
 
 
