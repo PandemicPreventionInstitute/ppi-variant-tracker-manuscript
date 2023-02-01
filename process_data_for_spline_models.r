@@ -1,4 +1,11 @@
 # Databricks notebook source
+reference_date <- dbutils.widgets.get('reference_date')
+
+print(reference_date)
+stopifnot(reference_date %in% c('2022-04-30', '2022-05-16', '2022-05-27', '2022-06-04', '2022-06-27', '2022-07-01'))
+
+# COMMAND ----------
+
 # Add code to install arrow package 
 # fast install from https://arrow.apache.org/docs/r/articles/install.html#method-1a---binary-r-package-containing-libarrow-binary-via-rspmconda
 options(
@@ -49,13 +56,7 @@ region_map <- as_tibble(region_map) %>% filter(!is.na(code)) %>% select(-country
 
 # COMMAND ----------
 
-reference_dates <- c('2022-04-30', '2022-05-16', '2022-05-27', '2022-06-04', '2022-06-27', '2022-07-01')
-
-# COMMAND ----------
-
-for (reference_date in reference_dates){
-  
-  print(paste('Fitting model for:', reference_date))
+    print(paste('Fitting model for:', reference_date))
   
   # If rerunning for some reason, skip already computed results
   if (!file.exists(paste0("/dbfs/mnt/ppi-test/validation/spline_fits/fitted_model/", reference_date, ".rds"))){
@@ -75,15 +76,21 @@ for (reference_date in reference_dates){
   df$lineage <- relevel(as.factor(df$lineage), ref= 'BA.2')
 
   head(df)
+    
+  print("Fitting model...")
   
   fit <- nnet::multinom(lineage ~ 1 + ns(t, df=2)+ns(t, df=2):region+country, 
                                        weights=n_seq, 
                                        data= df, 
                                        maxit=10000, MaxNWts=100000)
+    
+  print("Saving model...")
   
   # Save model
   saveRDS(fit, file=paste0("/dbfs/mnt/ppi-test/validation/spline_fits/fitted_model/", reference_date, ".rds"))
     
+  print("Computing marginal means...")
+  
   # pass into emmeans to get marginal slopes at t = t_max
   # This is directly the logic on line 497 of https://github.com/tomwenseleers/LineageExplorer/blob/main/global%20analysis.R
   rg_nnet <- ref_grid(fit, 
@@ -93,13 +100,19 @@ for (reference_date in reference_dates){
   em_nnet <- emmeans(rg_nnet,
                    specs = ~ t|lineage,
                     mode = 'latent')
+  
+  print("Computing contrasts...")
     
   # Get contrasts
   contrasts <- as_tibble(pairs(em_nnet, simple = 'each', combine = TRUE)) %>% 
                 filter(grepl("BA.2 - ", contrast, fixed = TRUE)) %>%
                 select(-lineage)
+    
+  print("Saving contrasts...")
 
   arrow::write_parquet(contrasts, paste0('/dbfs/mnt/ppi-test/validation/spline_fits/contrast/', reference_date, '.parquet'))
+  
+  print(print("Calculating Brier Score..."))
     
   # Use full to include fitting period + forecast period
   newd <- df_full %>% 
@@ -126,10 +139,9 @@ for (reference_date in reference_dates){
     #     brier_score = (fitted_count - n_seq)**2 / tot_seq) %>%
     select(region, country, collection_date, t, period, p, brier_score, tot_seq, n_seq, p_lineage_week)
   
-  arrow::write_parquet(brier_score_df, paste0('/dbfs/mnt/ppi-test/validation/spline_fits/brier_score/', reference_date, '.parquet'))
+  print("Saving Brier score...")
   
-
-  }
+  arrow::write_parquet(brier_score_df, paste0('/dbfs/mnt/ppi-test/validation/spline_fits/brier_score/', reference_date, '.parquet'))
 }
 
 # COMMAND ----------
