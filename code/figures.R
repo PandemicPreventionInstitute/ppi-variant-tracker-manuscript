@@ -892,8 +892,6 @@ fig4global
 
 # Portugal BA.5-------------------------------------------------
 
-this_country<- 'Portugal'
-
 get_single_country_metrics <- function(this_country){
     global_seq<- clean_global_df %>% group_by(collection_date, reference_date) %>% 
         summarise(seq = log10(sum(N, na.rm = T))) %>% 
@@ -941,9 +939,12 @@ get_single_country_metrics <- function(this_country){
     
     combined_df$method <- factor(combined_df$method, levels = c("Multicountry", "Single country"))
     
-    return(combined_df)
+    return(list(combined_df, country_df))
 }
-combined_df <- get_single_country_metrics(this_country)
+this_country <- 'Portugal'
+country_list <- get_single_country_metrics(this_country)
+combined_df<- country_list[[1]]
+country_df<-country_list[[2]]
 calib_df<- combined_df %>% filter(period == 'calibration' )
 forecast_df <- combined_df %>% filter(period == 'forecast')
 
@@ -1101,9 +1102,11 @@ ggsave('../data/output/figures/figure_4_Portugal_BA5.pdf',
 
 
 # Make a figure with panels A and C from a few different countries 
-list_of_countries <- c('Denmark', 'Czechia', 'Brazil', 'Spain')
-this_country <-list_of_countries[1]
-combined_df <- get_single_country_metrics(this_country)
+list_of_countries <- c('Czechia', 'India', 'Spain', 'Brazil')
+this_country <- list_of_countries[1]
+country_list<- get_single_country_metrics(this_country)
+combined_df <- country_list[[1]]
+country_df<-country_list[[2]]
 calib_df<- combined_df %>% filter(period == 'calibration' )
 forecast_df <- combined_df %>% filter(period == 'forecast')
 this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
@@ -1117,6 +1120,10 @@ timeseries <- ggplot() +
     geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
     geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
                                           ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    # Option to comment these out! 
+    #geom_point(data = country_df, aes(x = ymd(mid_week_date), y = mid_week_p_lineage), size = 1, color = 'purple') +
+    #geom_linerange(data = country_df, aes(x = ymd(mid_week_date), ymin = mid_week_p_lineage -mid_week_p_lineage_se, 
+                                          #ymax = mid_week_p_lineage +mid_week_p_lineage_se), color = 'purple') +
     geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
                   show.legend = F, alpha = 1)+
     scale_xsidey_continuous(position = 'right',
@@ -1176,8 +1183,10 @@ Brier_score_comparison<- ggplot()+
 Brier_score_comparison 
 
 
-this_country <-list_of_countries[2]
-combined_df <- get_single_country_metrics(this_country)
+this_country <- list_of_countries[2]
+country_list<- get_single_country_metrics(this_country)
+combined_df <- country_list[[1]]
+country_df<-country_list[[2]]
 calib_df<- combined_df %>% filter(period == 'calibration' )
 forecast_df <- combined_df %>% filter(period == 'forecast')
 this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
@@ -1191,6 +1200,10 @@ timeseries2 <- ggplot() +
     geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
     geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
                                           ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    # Option to comment these out! 
+    #geom_point(data = country_df, aes(x = ymd(mid_week_date), y = mid_week_p_lineage), size = 1, color = 'purple') +
+    #geom_linerange(data = country_df, aes(x = ymd(mid_week_date), ymin = mid_week_p_lineage -mid_week_p_lineage_se, 
+                                          #ymax = mid_week_p_lineage +mid_week_p_lineage_se), color = 'purple') +
     geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
                   show.legend = F, alpha = 1)+
     scale_xsidey_continuous(position = 'right',
@@ -1249,8 +1262,10 @@ Brier_score_comparison2<- ggplot()+
     ggtitle(paste0(this_country, ' BA.5'))
 
 
-this_country <-list_of_countries[3]
-combined_df <- get_single_country_metrics(this_country)
+this_country <- list_of_countries[3]
+country_list<- get_single_country_metrics(this_country)
+combined_df <- country_list[[1]]
+country_df<-country_list[[2]]
 calib_df<- combined_df %>% filter(period == 'calibration' )
 forecast_df <- combined_df %>% filter(period == 'forecast')
 this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
@@ -1264,6 +1279,10 @@ timeseries3 <- ggplot() +
     geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
     geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
                                           ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    # Option to comment these out! 
+    #geom_point(data = country_df, aes(x = ymd(mid_week_date), y = mid_week_p_lineage), size = 1, color = 'purple') +
+    #geom_linerange(data = country_df, aes(x = ymd(mid_week_date), ymin = mid_week_p_lineage -mid_week_p_lineage_se, 
+                                          #ymax = mid_week_p_lineage +mid_week_p_lineage_se), color = 'purple') +
     geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
                   show.legend = F, alpha = 1)+
     scale_xsidey_continuous(position = 'right',
@@ -1322,8 +1341,10 @@ Brier_score_comparison3<- ggplot()+
     ggtitle(paste0(this_country, ' BA.5'))
 
 
-this_country <-list_of_countries[4]
-combined_df <- get_single_country_metrics(this_country)
+this_country <- list_of_countries[4]
+country_list<- get_single_country_metrics(this_country)
+combined_df <- country_list[[1]]
+country_df<-country_list[[2]]
 calib_df<- combined_df %>% filter(period == 'calibration' )
 forecast_df <- combined_df %>% filter(period == 'forecast')
 this_country_metrics <-cleaned_metrics %>% filter(country == this_country)
@@ -1337,6 +1358,10 @@ timeseries4 <- ggplot() +
     geom_point(data = country_df, aes(x = ymd(mid_week_date_recent), y = mid_week_prev_recent), size = 1) +
     geom_linerange(data = country_df, aes(x = ymd(mid_week_date_recent), ymin = mid_week_prev_recent -mid_week_prev_se_recent, 
                                           ymax = mid_week_prev_recent + mid_week_prev_se_recent)) +
+    # Option to comment these out! 
+    #geom_point(data = country_df, aes(x = ymd(mid_week_date), y = mid_week_p_lineage), size = 1, color = 'purple') +
+    #geom_linerange(data = country_df, aes(x = ymd(mid_week_date), ymin = mid_week_p_lineage -mid_week_p_lineage_se, 
+                                         # ymax = mid_week_p_lineage +mid_week_p_lineage_se), color = 'purple') +
     geom_xsidecol(data = seq_numbers, aes(x = ymd(collection_date), y = seq, fill = method),
                   show.legend = F, alpha = 1)+
     scale_xsidey_continuous(position = 'right',
