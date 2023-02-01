@@ -106,13 +106,25 @@ for (reference_date in reference_dates){
     select(t, country, region) %>% 
     distinct()
   
+  group_by(draw, country,  lineage_collapsed) %>% 
+      summarise(
+          sum_over_t = sum( n_lineages - 2*p_hat*n_lineages + N_tot_seq_day*(p_hat^2)), # using sufficient stat for for (p_hat - Y)^2
+          N_tot_seq = max(N_tot_seq),
+      ) %>% ungroup() %>% 
+      group_by(country, draw) %>% 
+      summarise( Brier_score = 1/max(N_tot_seq)*sum(sum_over_t)) 
+  
   # Get brier score and predicted values
   brier_score_df <- bind_cols(predict(fit, newd, type = 'p'), newd) %>% 
     pivot_longer(cols = !c(region, country, t), names_to = 'lineage', values_to = 'p') %>% 
-    left_join(df_full) %>%
-    mutate(fitted_count = tot_seq * p,
-         brier_score = (fitted_count - n_seq)**2 / tot_seq) %>%
-    select(region, country, collection_date, t, period, p, fitted_count, brier_score, tot_seq, n_seq, p_lineage_week)
+    left_join(df_full) %>% 
+    group_by(country, lineage) %>%
+      mutate(sum_over_t = sum(n_seq - 2*p*n_seq + tot_seq*(p^2))) %>% ungroup()
+      group_by(country) %>%
+      mutate(brier_score = 1/sum(tot_seq) * sum(sum_over_t)) %>% # LHS is 1/ sum over all time points of all the sequences, RHS is sum over all lineages of the sum over time points
+   # mutate(fitted_count = tot_seq * p,
+    #     brier_score = (fitted_count - n_seq)**2 / tot_seq) %>%
+    select(region, country, collection_date, t, period, p, brier_score, tot_seq, n_seq, p_lineage_week)
   
   arrow::write_parquet(brier_score_df, paste0('/dbfs/mnt/ppi-test/validation/spline_fits/brier_score/', reference_date, '.parquet'))
   
