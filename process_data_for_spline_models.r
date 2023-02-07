@@ -58,9 +58,6 @@ region_map <- as_tibble(region_map) %>% filter(!is.na(code)) %>% select(-country
 
     print(paste('Fitting model for:', reference_date))
   
-  # If rerunning for some reason, skip already computed results
-  if (!file.exists(paste0("/dbfs/mnt/ppi-test/validation/spline_fits/fitted_model/", reference_date, ".rds"))){
-    
   # Read in lineage file
   df_full <- read_csv(paste0('/dbfs/mnt/ppi-test/validation/validation_data/lineage_t_', reference_date, '.csv')) %>%
       left_join(region_map, by = 'code') %>%
@@ -129,12 +126,25 @@ region_map <- as_tibble(region_map) %>% filter(!is.na(code)) %>% select(-country
     group_by(country) %>%
     mutate(brier_score = 1/sum(tot_seq) * sum(sum_over_t)) %>% # LHS is 1/ sum over all time points of all the sequences, 
                                                                # RHS is sum over all lineages of the sum over time points
-    select(region, country, collection_date, t, period, p, brier_score, tot_seq, n_seq, p_lineage_week)
+    ungroup() %>%
+    select(region, country, lineage, collection_date, t, period, p, brier_score, tot_seq, n_seq, p_lineage_week)
   
   print("Saving Brier score...")
   
   arrow::write_parquet(brier_score_df, paste0('/dbfs/mnt/ppi-test/validation/spline_fits/brier_score/', reference_date, '.parquet'))
-}
+
+# COMMAND ----------
+
+brier_score_df %>%
+  filter(country == 'Portugal', lineage == 'BA.5') %>%
+  print(n=500)
+
+# COMMAND ----------
+
+brier_score_df %>%
+  filter(country == 'Portugal', lineage == 'BA.5') %>%
+  ggplot(aes(collection_date, p, color = period))+
+    geom_line()
 
 # COMMAND ----------
 
