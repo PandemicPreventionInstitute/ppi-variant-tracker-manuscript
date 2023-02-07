@@ -15,8 +15,7 @@ if(USE_CASE == ""){
 # Libraries ---------------------------------------------------------------
 
 
-library(cmdstanr) # command stan
-library(tidybayes) # wrangle command stan objects
+
 library(tidyverse) # data wrangling
 library(tibble) # data wrangling
 library(janitor) # column naming
@@ -45,6 +44,7 @@ if (USE_CASE == 'local'){
     COUNTRIES_FIT_TO_MLE <- '../data/processed/validation_data/countries_fit_to_MLE.csv'
     MLE_METRICS_PATH <- '../data/processed/validation_data/country_metrics_MLE.csv'
     MLE_LINEAGE_METRICS_PATH <- '../data/processed/validation_data/country_lineage_metrics_MLE.csv'
+    mu_all_last_tp <- read.csv('../data/processed/multicountry_mu_distrib_2022-07-01.csv')
     #setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code")
 } 
 
@@ -195,14 +195,34 @@ ref_date_2 <- BA.5_distrib %>% filter(reference_date == '2022-05-16') %>% pull(g
 ref_date_3 <- BA.5_distrib %>% filter(reference_date == '2022-05-27') %>% pull(global_transmission_advantage)
 ref_date_4 <- BA.5_distrib %>% filter(reference_date == '2022-06-04') %>% pull(global_transmission_advantage)
 ref_date_5 <- BA.5_distrib %>% filter(reference_date == '2022-06-27') %>% pull(global_transmission_advantage)
-x <- rbind(ref_date_1, ref_date_2, ref_date_3, ref_date_4, ref_date_5) # These are not probability distributions, they are posterior distributions of the value of mu_hierarchical
-JSD(x, est.prob = "empirical") # Therefore, we need est.prob = "empirical" to transform to probability distributions 
+last_ref_date <- mu_all_last_tp %>% filter (lineage == 'BA.5') %>% pull(transmission_advantage) %>% sample(100)
+x <- rbind(ref_date_1, ref_date_2, ref_date_3, ref_date_4, ref_date_5, last_ref_date) # These are not probability distributions, they are posterior distributions of the value of mu_hierarchical
+obj<-JSD(x, est.prob = "empirical") # Therefore, we need est.prob = "empirical" to transform to probability distributions 
 JSDMatrix <- heatmap(JSD(x, est.prob = "empirical"))
 JSDMatrix
 
+JS_t <- obj[,6]
+plot(JS_t)
 
+JS_df <- data.frame(JS_val = as.numeric(JS_t), reference_date = c(reference_data_df$reference_date, '2022-07-01'))
+JS_df <- JS_df %>% mutate(num = row_number())
 
+JS_fig <- ggplot(JS_df %>% filter(reference_date != '2022-07-01')) + geom_point(aes(x = as.factor(num), y = JS_val)) +
+    theme_bw()+
+    scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
+    theme(axis.text.x = element_text(angle = -45, hjust=-.5, vjust = 2,size = 0.7*15),
+          axis.title.y = element_text(size = 13),
+          axis.title.x = element_text(size = 15))+
+    ggtitle('BA.5 global fitness advantage distribution')+
+    labs(y = paste0('Jensen-Shannon Divergence compared to July 1st estimate'),
+         x = 'Reference date',
+         fill = '')
+JS_fig
 
+ggsave('../data/output/figures/JS_Supp_fig.pdf', 
+       plot = JS_fig,
+       width = 8,
+       height = 7)
 
 
 
