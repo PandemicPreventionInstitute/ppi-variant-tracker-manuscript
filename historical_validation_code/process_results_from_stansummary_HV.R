@@ -7,13 +7,7 @@
 
 
 rm(list = ls())
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-    USE_CASE<-'local'
-}
-if (USE_CASE == 'local'){
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript/historical_validation_code")
-}
+setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript/historical_validation_code") # might need to change!
 
 # Libraries ---------------------------------------------------------------
 
@@ -35,12 +29,8 @@ library(lme4) # logistic regression
 
 
 # Constants ---------------------------------------------------
-# Generation interval
-#MEAN_GI <- 5.8
-#TRANS_ADV_MULTIPLIER <-7 # corresponds to weekly transmission advantage 
-if (USE_CASE == 'local'){
-    REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
-}
+REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
+
 
 # Load metadata on reference data ---------------------------------------------
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
@@ -82,7 +72,7 @@ for (i in 1:(nrow(reference_data_df)-1)){
         tail(n=20)
     
     most_prevalent_lineage <- df %>% 
-        #filter(collection_date %in% last_twenty_timepoints) %>% 
+        filter(collection_date %in% last_twenty_timepoints) %>% 
         group_by(lineage) %>% 
         summarize(n = sum(n)) %>% 
         filter(n == max(n)) %>% 

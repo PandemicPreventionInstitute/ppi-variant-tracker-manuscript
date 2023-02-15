@@ -8,10 +8,6 @@
 
 rm(list = ls())
 
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-    USE_CASE<-'local'
-}
 # Libraries ---------------------------------------------------------------
 
 library(tidyverse)
@@ -22,12 +18,10 @@ library(cmdstanr)
 # Constants ---------------------------------------------------------------
 if (USE_CASE == 'local'){
     REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
-    # Path to the Stan model code
-    MODEL_PATH <- 'stancode/multivariate_variant_multinomial_ncp.stan'
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker/code")
+    setwd("~/Documents/ppi-variant-tracker-manuscript/code") # May need to be adjusted for local path 
 }
 
-
+# Get a subset of countries that have enough sequencing in the time period for comparing 
 MLE_COUNTRIES1 <- read_csv('../data/processed/validation_data/lineage_t_2022-04-30.csv') %>% 
     group_by(country) %>% 
     summarise(tot_seq = sum(tot_seq)) %>% 
@@ -42,7 +36,7 @@ MLE_COUNTRIES<-MLE_COUNTRIES2[MLE_COUNTRIES_FLAG]
 
 # Load metadata on reference data ---------------------------------------------
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
-reference_data_df$most_prevalent_lineage <- rep(NA, nrow(reference_data_df))
+reference_data_df$most_prevalent_lineage <- rep(NA, nrow(reference_data_df)) # pre-allocate
 
 
 # Get the last reference data number of sequences for observed predictions------ 
@@ -54,13 +48,10 @@ df_last.orig<-read_csv(paste0('../data/processed/validation_data/lineage_t_for_c
 
 LAST_COLLECTION_DATE <- as.character(max(df_last.orig$collection_date[df_last.orig$tot_seq>0]))
 
-# MLE_COUNTRIES <-c('Brazil','Denmark', 'India', 'South Africa', 
-#                  'United Kingdom', 'United States', 'Portugal') # just set for troubleshooting
 
 df_last <- df_last.orig %>% 
     filter(collection_date <= ymd(LAST_COLLECTION_DATE)) %>% 
     select(lineage, country, collection_date, n_seq, t) %>% 
-    #filter(country %in% MLE_COUNTRIES) %>%  # Subset to these countries for troubleshooting only!!!
     group_by(lineage, country, collection_date, t) %>% 
     summarize(n = sum(n_seq)) %>% 
     ungroup() %>% 
@@ -103,7 +94,6 @@ for (i in 1:nrow(reference_data_df)){
     df <- df.orig %>% 
         filter(collection_date <= ymd(LAST_COLLECTION_DATE)) %>% 
         select(lineage, country, collection_date, n_seq, t) %>% 
-        #filter(country %in% MLE_COUNTRIES) %>%  #filter to MLE countries for torubleshooting only
         group_by(lineage, country, collection_date, t) %>% 
         summarize(n = sum(n_seq)) %>% 
         ungroup() %>% 
@@ -120,7 +110,7 @@ for (i in 1:nrow(reference_data_df)){
         tail(n=20)
     
     most_prevalent_lineage <- df %>% 
-        #filter(collection_date %in% last_twenty_timepoints) %>% 
+        filter(collection_date %in% last_twenty_timepoints) %>% 
         group_by(lineage) %>% 
         summarize(n = sum(n)) %>% 
         filter(n == max(n)) %>% 
@@ -213,7 +203,8 @@ for (i in 1:nrow(reference_data_df)){
     df_last_i <- df_last %>% filter(collection_date <= ymd(LAST_COLLECTION_DATE) + days(NUM_DAYS_NOWCAST),
                                     collection_date >=ymd(FIRST_DATE))
     
-    
+    # This is used to get the number of sequences we now know to have been collected 
+    # on each of the days, to see what the model would've predicted their lineages as
     future_trials <- df %>% 
         full_join(df_last_i, by = c("country", "collection_date", "lineage")) %>% # add in the n_last
         left_join(country_map) %>% 
@@ -260,7 +251,7 @@ for (i in 1:nrow(reference_data_df)){
         cmdstanr::write_stan_json(data, paste0('../data/processed/validation_data/data_for_cmdstan_', THIS_REF_DATE, '.json'))
     }
     
-    # Package data for nnet-----------------------------------------------------
+    # Package data for nnet for MLE single country model------------------------
     data_nnet <- df %>% 
         filter(country %in% MLE_COUNTRIES) %>% 
         full_join(lineage_map) %>%
@@ -289,8 +280,5 @@ for (i in 1:nrow(reference_data_df)){
 # Keep track of the countries that you fit the MLE to 
 MLE_countries<- data.frame(MLE_COUNTRIES)
 write.csv(MLE_COUNTRIES,'../data/processed/validation_data/countries_fit_to_MLE.csv', row.names = F )
-
-
-
 stopifnot(' Reference lineage is not the same for all datasets'= length(unique(reference_data_df$most_prevalent_lineage))==1)
 

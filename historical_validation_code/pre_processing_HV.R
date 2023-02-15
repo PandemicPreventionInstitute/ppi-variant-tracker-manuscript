@@ -10,6 +10,11 @@
 # This requires first running all of the datasets and getting the unique set of
 # lineages for each, and then generating datasets aggregated to that lineage level
 
+# Note: To regenerate the data as is presented in the manuscript, one must have the 
+# GISAID metadata from those days, rather than just filtering for submission dates
+# before the last submission date in each reference date. This is because the 
+# pangolineage assignments get changed as the pangolineage model (which assigns 
+# pangolineages to sequences) updates. 
 
 
 
@@ -17,54 +22,16 @@ rm(list = ls())
 
 # Set global parameters-------------------------------------------------------
 
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-  USE_CASE<-'local'
-}
-
-FROM_FEED<-TRUE
-COMBINE_BA.4_BA.5 <- FALSE
-
-if (COMBINE_BA.4_BA.5 == TRUE){
-    variants_list<- c('BA.2', 'BA.1', 'BA.2.12.1', 'BA.4/BA.5') 
-}
-if (COMBINE_BA.4_BA.5 == FALSE){
-    variants_list<- c('BA.2', 'BA.1','BA.2.12.1', 'BA.4', 'BA.5') 
-}
-
+variants_list<- c('BA.2', 'BA.1','BA.2.12.1', 'BA.4', 'BA.5') 
 sub_pango_variants<-c()
 variants_tracking<-c(variants_list, sub_pango_variants)
 VOCs<- c('B.1.1.7', 'P.1', 'AY', 'C.37', 'B.1.621', 'B.1.1.529', 'B.1351', 'B.1.429')
-
-
-# set time window
-duration<-90# 120
-# Delete these because this will be specific to the dataset
-#TODAY_DATE<-as.character(today())
-#FIRST_DATE<-as.character(ymd(TODAY_DATE)- days(duration))# earliest date we want sequences for
-#LAST_DATE<-TODAY_DATE # want flexibility to change this if we want to pretend we were looking from a different time period
-OBSERVATION_THRESHOLD<-50 # total global number of sequences needed for it to be fit to the model (go into lineage_t)
+duration<-90 # time window to run model
+OBSERVATION_THRESHOLD<-50 # total global number of sequences needed for a lineage to be fit to the model (go into lineage_t)
 
 
 # Install Libraries-------------------------------------------------------------
 
-if (USE_CASE== 'domino'){
-  install.packages("tidyverse", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-  install.packages("janitor", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-  install.packages("tibble", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-  install.packages("countrycode", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-  install.packages("lubridate", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("readxl", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("zoo", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("R.utils", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("stringr", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("tsoutliers", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("dplyr", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("scales", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("readr", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("EpiEstim", dependencies=TRUE, repos='http://cran.us.r-project.org')
-  install.packages("lme4", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-}
 
 library(tidyverse) # data wrangling
 library(tibble) # data wrangling
@@ -82,18 +49,13 @@ library(lme4) # logistic regression
 
 
 # Load in reference date data & set country list -----------------------
-if (USE_CASE == 'local'){
-  REFERENCE_DATA_PATH <- '../data/processed/reference_data_df.csv'
-}
-
+REFERENCE_DATA_PATH <- '../data/processed/reference_data_df.csv'
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
 
 # Filter the dates we want to actually use
 dates_list <-ymd(c("2022-04-30", "2022-05-16", "2022-05-27",
                "2022-06-04", "2022-06-27", "2022-07-01"))
-
 reference_data_df <- reference_data_df %>% filter(reference_date %in% dates_list)
-
 
 # leave this empty since we will run for all countries
 country_list <-c()
@@ -161,7 +123,7 @@ clean_metadata<- function(metadata, FIRST_DATE, TODAY_DATE, START_DATE, duration
     metadata<-metadata[!is.na(metadata$collection_date),]
     metadata<-metadata[!is.na(metadata$submission_date),]
     
-    #6. Filter dataset so collection dates are from the past 120 days
+    #6. Filter dataset so collection dates are from the past "duration" days
     if (length(country_list)==0){
         metadata_subset<-metadata
     }
@@ -185,6 +147,8 @@ clean_metadata<- function(metadata, FIRST_DATE, TODAY_DATE, START_DATE, duration
     
     # name all missing pango_lineages 
     metadata_subset$pango_lineage[is.na(metadata_subset$pango_lineage) | (metadata_subset$pango_lineage == "") | (metadata_subset$pango_lineage == " null")]<-"Unassigned" # set those with NA to None as well
+    
+    # Make sure data isn't too far out of date
     most_recent_submission_date<-max(metadata_subset$submission_date, na.rm = T)
     print(paste0('Most recent submission from ', most_recent_submission_date))
     stopifnot('Most recent submission is more than 5 days ago' = as.integer(ymd(TODAY_DATE) - most_recent_submission_date ) >0)
@@ -577,6 +541,7 @@ get_7d_avgs<-function(gisaid_t, VARIANT_TYPE){
 
 
 # Run loop through reference dates to find consensus lineage list------------
+# We must do this since we need the same set of lineages in all of the model runs for comparison
 
 lineage_list<- c()
 for (i in 1:nrow(reference_data_df)){
@@ -623,6 +588,7 @@ for (i in 1:nrow(reference_data_df)){
     # Get 7d averages
     lineage_t<-get_7d_avgs(lineage_t,  VARIANT_TYPE = 'lineage')
     
+    # Write to a file
     write.csv(lineage_t, paste0('../data/processed/validation_data/lineage_t_', THIS_REF_DATE, '.csv'))
     
     

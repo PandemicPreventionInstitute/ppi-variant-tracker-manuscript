@@ -277,8 +277,13 @@ Omega_hat <- fit %>%
            Omega_hat_lb = .lower)
 
 # Posterior fitness advantage estimates for each variant country with all draws!
-r_summary <- fit %>% 
-    spread_draws(r_hat[comparison_id, country_id]) %>% 
+draws <- sample(unique(r_raw$.draw), N_SAMPLED_DRAWS)
+r_raw <- fit %>% 
+    spread_draws(r_hat[comparison_id, country_id])
+
+draws <- sample(unique(r_raw$.draw), N_SAMPLED_DRAWS)
+
+r_summary <- r_raw %>% 
     filter(.draw %in% draws) %>% 
     group_by(comparison_id, country_id) %>% 
     mutate(

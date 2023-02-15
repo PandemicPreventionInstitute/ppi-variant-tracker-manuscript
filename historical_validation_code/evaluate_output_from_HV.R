@@ -3,14 +3,11 @@
 # Date initiated: 06-23-2022
 
 # This script loads in the results from all of the reference datasets for the 
-# multicountry and the MLE models
+# multicountry and the MLE models and makes a dataset containing all of them in
+# long format for use in the code/figures.R script
 
 
 rm(list = ls())
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-    USE_CASE<-'local'
-}
 
 # Libraries ---------------------------------------------------------------
 
@@ -34,19 +31,18 @@ library(philentropy) # for calculating JS diveregence across time in mu distribu
 
 
 # Constants ---------------------------------------------------
-if (USE_CASE == 'local'){
-    REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
-    MOST_RECENT_R_SUMMARY_PATH <- '../data/processed/validation_data/r_summary_2022-07-01.csv'
-    MOST_RECENT_CLEAN_GLOBAL_DF_PATH <- '../data/processed/validation_data/clean_global_df_2022-07-01.csv'
-    MOST_RECENT_MU_HAT_PATH <- '../data/processed/validation_data/mu_hat_2022-07-01.csv'
-    MLE_FIT_PATH <- '../data/processed/validation_data/MLE_t.csv' # contains subset of countries, all data
-    MLE_REGRESSORS_PATH <- '../data/processed/validation_data/MLE_regressors.csv'
-    COUNTRIES_FIT_TO_MLE <- '../data/processed/validation_data/countries_fit_to_MLE.csv'
-    MLE_METRICS_PATH <- '../data/processed/validation_data/country_metrics_MLE.csv'
-    MLE_LINEAGE_METRICS_PATH <- '../data/processed/validation_data/country_lineage_metrics_MLE.csv'
-    mu_all_last_tp <- read.csv('../data/processed/multicountry_mu_distrib_2022-07-01.csv')
-    #setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code")
-} 
+REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
+MOST_RECENT_R_SUMMARY_PATH <- '../data/processed/validation_data/r_summary_2022-07-01.csv'
+MOST_RECENT_CLEAN_GLOBAL_DF_PATH <- '../data/processed/validation_data/clean_global_df_2022-07-01.csv'
+MOST_RECENT_MU_HAT_PATH <- '../data/processed/validation_data/mu_hat_2022-07-01.csv'
+MLE_FIT_PATH <- '../data/processed/validation_data/MLE_t.csv' # contains subset of countries, all data
+MLE_REGRESSORS_PATH <- '../data/processed/validation_data/MLE_regressors.csv'
+COUNTRIES_FIT_TO_MLE <- '../data/processed/validation_data/countries_fit_to_MLE.csv'
+MLE_METRICS_PATH <- '../data/processed/validation_data/country_metrics_MLE.csv'
+MLE_LINEAGE_METRICS_PATH <- '../data/processed/validation_data/country_lineage_metrics_MLE.csv'
+GLOBAL_FITNESS_LAST_TP_PATH <- '../data/processed/multicountry_mu_distrib_2022-07-01.csv'
+setwd("~/Documents/variant-tracker/ppi-variant-tracker/historical_validation_code") # may need to change this
+
 
 # Load reference dates & most recent data --------------------------------------
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
@@ -61,6 +57,7 @@ mle_metrics <- read_csv(MLE_METRICS_PATH) %>%
     relocate(country, .before = everything())
 mle_lin_metrics <- read_csv(MLE_LINEAGE_METRICS_PATH) %>% 
     relocate(country, .before = everything())
+mu_all_last_tp <- read.csv(GLOBAL_FITNESS_LAST_TP_PATH)
 
 # Make new column names for the reference data
 clean_global_df_recent <- clean_global_df_recent %>% 
@@ -188,7 +185,7 @@ n_seq_country_lineage<- clean_global_df %>% group_by(country, lineage, reference
 r_summary <- r_summary %>% left_join(n_seq_country_lineage, by = c('reference_date', 'country', 'lineage'))
 
 
-# Get Jensen-Shannon Divergence between the BA.5 global fitness advantage distributions
+# Get Jensen-Shannon Divergence between the BA.5 global fitness advantage distributions--------
 BA.5_distrib <- mu_distrib %>% filter(lineage == 'BA.5')
 ref_date_1 <- BA.5_distrib %>% filter(reference_date == '2022-04-30') %>% pull(global_transmission_advantage)
 ref_date_2 <- BA.5_distrib %>% filter(reference_date == '2022-05-16') %>% pull(global_transmission_advantage)
@@ -207,6 +204,8 @@ plot(JS_t)
 JS_df <- data.frame(JS_val = as.numeric(JS_t), reference_date = c(reference_data_df$reference_date, '2022-07-01'))
 JS_df <- JS_df %>% mutate(num = row_number())
 
+
+# Just make a figure here ---------------------------------------------------------
 JS_fig <- ggplot(JS_df %>% filter(reference_date != '2022-07-01')) + geom_point(aes(x = as.factor(num), y = JS_val)) +
     theme_bw()+
     scale_x_discrete(labels = c("1" = "April 30", "2" = "May 16", "3" = "May 27", "4" = "June 04", "5" = "June 27"))+
@@ -227,15 +226,15 @@ ggsave('../data/output/figures/JS_Supp_fig.pdf',
 
 
 # Save all the files 
-if (USE_CASE == 'local'){
-  write.csv(r_summary, '../data/output/validation/r_summary.csv', row.names = F)
-  write.csv(clean_global_df, '../data/output/validation/clean_global_df.csv', row.names = F)
-  write.csv(mu_hat, '../data/output/validation/mu_hat.csv', row.names = F)
-  write.csv(mu_distrib, '../data/output/validation/mu_distrib.csv', row.names = F)
-  write.csv(r_distrib, '../data/output/validation/r_distrib.csv', row.names = F)
-  write.csv(country_metrics, '../data/output/validation/country_metrics.csv', row.names = F)
-  write.csv(country_lineage_metrics, '../data/output/validation/country_lineage_metrics.csv', row.names = F)
-}
+
+write.csv(r_summary, '../data/output/validation/r_summary.csv', row.names = F)
+write.csv(clean_global_df, '../data/output/validation/clean_global_df.csv', row.names = F)
+write.csv(mu_hat, '../data/output/validation/mu_hat.csv', row.names = F)
+write.csv(mu_distrib, '../data/output/validation/mu_distrib.csv', row.names = F)
+write.csv(r_distrib, '../data/output/validation/r_distrib.csv', row.names = F)
+write.csv(country_metrics, '../data/output/validation/country_metrics.csv', row.names = F)
+write.csv(country_lineage_metrics, '../data/output/validation/country_lineage_metrics.csv', row.names = F)
+
 
 
 

@@ -3,17 +3,18 @@
 # Date initiated: 06-22-2022
 
 # This script loads in the the multicountry model outputs from the runs on the 
-# different reference datasets and pivots and summarizes them 
+# different reference datasets and pivots and summarizes them. This pulls 
+# in the full distribution data, which we use in the manuscript to get the 
+# geom_density plots of the global transmission advantage posterior distribution.
+# We also need the full distribution because we calculate the Brier score distribution
+# based on each draw from the posterior (since Brier score evaluation requires 
+# a predicted probability of an event and a categorical designation of the outcome,
+# in this case, was that sequence this lineage?)
 
 
 rm(list = ls())
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-    USE_CASE<-'local'
-}
-if (USE_CASE == 'local'){
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript/historical_validation_code")
-}
+setwd("~/Documents/ppi-variant-tracker-manuscript/historical_validation_code") # might need to change!
+
 
 # Libraries ---------------------------------------------------------------
 
@@ -36,10 +37,6 @@ library(DescTools) # Concordance correlation coefficient calculation
 
 
 # Constants ---------------------------------------------------
-# Numbers of draws from the posterior distribution to sample for Rt estimation
-N_SAMPLED_DRAWS = 100
-# Generation interval
-MEAN_GI <- 5.8
 TRANS_ADV_MULTIPLIER <- 7 # corresponds to the weekly transmission advantage 
 
 if (USE_CASE == 'local'){
@@ -52,8 +49,7 @@ reference_data_df <- read_csv(REFERENCE_DATA_PATH)
 variant_t <- read_csv(VARIANT_T_PATH) 
 variants_were_tracking <- unique(variant_t$variant)
 NUM_DAYS_NOWCAST<-21
-MLE_COUNTRIES <-c('Bangladesh', 'Brazil','Denmark', 'India', 'South Africa', 
-                  'United Kingdom', 'United States', 'Senegal', 'Portugal') 
+MLE_COUNTRIES <-read.csv('../data/processed/validation_data/countries_fit_to_MLE.csv') %>% pull(MLE_COUNTRIES)
 
 
 df_last.orig<-read_csv(paste0('../data/processed/validation_data/lineage_t_for_comp_', 
@@ -100,7 +96,6 @@ for (i in 1:nrow(reference_data_df)-1){
 
     df <- df.orig %>% 
       select(lineage, country, collection_date, n_seq, t) %>% 
-      #filter(country %in% MLE_COUNTRIES) %>% 
       group_by(lineage, country, collection_date, t) %>% 
       summarize(n = sum(n_seq)) %>% 
       ungroup() %>% 
@@ -118,7 +113,7 @@ for (i in 1:nrow(reference_data_df)-1){
         tail(n=20)
     
     most_prevalent_lineage <- df %>% 
-        #filter(collection_date %in% last_twenty_timepoints) %>% 
+        filter(collection_date %in% last_twenty_timepoints) %>% 
         group_by(lineage) %>% 
         summarize(n = sum(n)) %>% 
         filter(n == max(n)) %>% 
@@ -295,9 +290,6 @@ fit <- cmdstanr::as_cmdstan_fit(c(paste0('../data/output/multicountry_output/val
                   BS_lb_MC = quantile(Brier_score, probs = 0.025, na.rm = T),
                   BS_ub_MC = quantile(Brier_score, probs = 0.975, na.rm = T))
     
-    BS_all %>% filter(country %in% MLE_COUNTRIES) %>% ggplot() + 
-        geom_point(aes(x = country, y = BS_med_MC)) +
-        geom_linerange(aes(x = country, ymin = BS_lb_MC, ymax = BS_ub_MC))
     
     # Brier score by country broken down by calibration vs forecast period 
     BS_by_period <- lin_counts %>% 
@@ -318,7 +310,7 @@ fit <- cmdstanr::as_cmdstan_fit(c(paste0('../data/output/multicountry_output/val
         mutate(reference_date = THIS_REF_DATE)
     
     
-    # CCC by country 
+    # CCC by country (not used directly in manuscript but nice to have)
     CCC_all <- lin_counts %>% 
         group_by(draw, country) %>% 
         summarise(
@@ -481,13 +473,12 @@ fit <- cmdstanr::as_cmdstan_fit(c(paste0('../data/output/multicountry_output/val
 
 # Save output -------------------------------------------------------------
 
-    if (USE_CASE == 'local'){
-      # Save the summarized quantities in individual csv files
-      write.csv(country_metrics, paste0('../data/processed/validation_data/country_metrics_', THIS_REF_DATE, '.csv'), row.names = F)
-      write.csv(country_lineage_metrics, paste0('../data/processed/validation_data/country_lineage_metrics_', THIS_REF_DATE, '.csv'), row.names = F)
-      write.csv(r_combined, paste0('../data/processed/validation_data/r_summary_', THIS_REF_DATE, '.csv'), row.names = F)
-      write.csv(r_distrib, paste0('../data/processed/validation_data/r_distrib_', THIS_REF_DATE, '.csv'),  row.names = F)
-      write.csv(mu_all, paste0('../data/processed/validation_data/mu_distrib_', THIS_REF_DATE, '.csv'),  row.names = F)
-      write.csv(mu_hat, paste0('../data/processed/validation_data/mu_hat_', THIS_REF_DATE, '.csv'), row.names = F)
-    }
+# Save the summarized quantities in individual csv files
+write.csv(country_metrics, paste0('../data/processed/validation_data/country_metrics_', THIS_REF_DATE, '.csv'), row.names = F)
+write.csv(country_lineage_metrics, paste0('../data/processed/validation_data/country_lineage_metrics_', THIS_REF_DATE, '.csv'), row.names = F)
+write.csv(r_combined, paste0('../data/processed/validation_data/r_summary_', THIS_REF_DATE, '.csv'), row.names = F)
+write.csv(r_distrib, paste0('../data/processed/validation_data/r_distrib_', THIS_REF_DATE, '.csv'),  row.names = F)
+write.csv(mu_all, paste0('../data/processed/validation_data/mu_distrib_', THIS_REF_DATE, '.csv'),  row.names = F)
+write.csv(mu_hat, paste0('../data/processed/validation_data/mu_hat_', THIS_REF_DATE, '.csv'), row.names = F)
+
 } # end loop over all reference dates 

@@ -1,7 +1,9 @@
 # Author: Kaitlyn Johnson
 # Date initiated: 06-22-2022'
 
-# This script 
+# This script runs the cmdstan model on each of the reference date datasets and
+# generates the timestamped output files. It then uses stansummary to process the model
+# output to get median, mean, and 95% CI for estimated variant prevalence 
 
 rm(list = ls())
 library(tidyverse)
@@ -10,36 +12,31 @@ library(tidybayes)
 library(cmdstanr)
 library(janitor)
 
-USE_CASE = Sys.getenv("USE_CASE")
-if(USE_CASE == ""){
-    USE_CASE<-'local'
-}
 
 
-if (USE_CASE == 'local'){
-    REFERENCE_DATA_PATH <- 'data/processed/validation_data/reference_data_used.csv'
-    setwd("~/Documents/variant-tracker/ppi-variant-tracker-manuscript")
-}
 
+REFERENCE_DATA_PATH <- 'data/processed/validation_data/reference_data_used.csv'
+setwd("~/Documents/ppi-variant-tracker-manuscript") # might need to change
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
-
-system("ls")
-
 
 
 # Fit each reference dataset to the model
-for (i in 1:nrow(reference_data_df)-1){
+for (i in 1:(nrow(reference_data_df)-1)){
     THIS_REF_DATE <- as.character(reference_data_df$reference_date[i])
     system(paste0("bash run_cmdstan_HV.sh ", THIS_REF_DATE))
 }
 
-# process the model output
-for (i in 1:nrow(reference_data_df)-1){
+# process the model output (note this is duplicative as we also
+# process from the raw full distribution output in the process_results_from_cmdstan_HV.R)
+for (i in 1:(nrow(reference_data_df)-1)){
     THIS_REF_DATE <- as.character(reference_data_df$reference_date[i])
     system(paste0("bash process_output_HV.sh ", THIS_REF_DATE))
+    # Gets saved as `validation/processed_output_{REFERENCE_DATE}.csv`
 }
 
-for (i in 1:nrow(reference_data_df)-1){
+
+# Get model estimated variant prevalence (p_hat) and sequence counts of each lienage (Y_tilde)
+for (i in 1:(nrow(reference_data_df)-1)){
     THIS_REF_DATE <- as.character(reference_data_df$reference_date[i])
     processed_output<- read.csv(paste0('data/output/multicountry_output/validation/processed_output_', THIS_REF_DATE, '.csv')) %>% 
         clean_names() %>% 
