@@ -39,17 +39,16 @@ library(DescTools) # Concordance correlation coefficient calculation
 # Constants ---------------------------------------------------
 TRANS_ADV_MULTIPLIER <- 7 # corresponds to the weekly transmission advantage 
 
-if (USE_CASE == 'local'){
-    REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
-    VARIANT_T_PATH <- '../data/processed/variant_t_2022-07-01.csv'
-}
+
+REFERENCE_DATA_PATH <- '../data/processed/validation_data/reference_data_used.csv'
+VARIANT_T_PATH <- '../data/processed/variant_t_2022-07-01.csv'
 
 # Load metadata on reference data ---------------------------------------------
 reference_data_df <- read_csv(REFERENCE_DATA_PATH)
 variant_t <- read_csv(VARIANT_T_PATH) 
 variants_were_tracking <- unique(variant_t$variant)
 NUM_DAYS_NOWCAST<-21
-MLE_COUNTRIES <-read.csv('../data/processed/validation_data/countries_fit_to_MLE.csv') %>% pull(MLE_COUNTRIES)
+MLE_COUNTRIES <-read.csv('../data/processed/validation_data/countries_fit_to_MLE.csv') %>% pull(x)
 
 
 df_last.orig<-read_csv(paste0('../data/processed/validation_data/lineage_t_for_comp_', 
