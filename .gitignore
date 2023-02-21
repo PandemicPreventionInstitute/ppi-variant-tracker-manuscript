@@ -9,3 +9,6 @@ data/
 *.rds
 fits/
 *.html
+**/*.png
+*.parquet
+**/*.pq
