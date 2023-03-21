@@ -1,10 +1,9 @@
 # This file generates the proposed Figure 3 for the variant tracker paper
 
 here::i_am('code/figures.R')
+setwd(here::here())
 
 # Libraries ---------------------------------------------------------------
-rm(list = ls())
-
 library(tidyverse)
 library(ggplot2)
 library(scales)
@@ -68,8 +67,8 @@ lineage_colors <- c('BA.1' = pal[10],
                     'BA.5' = pal[12],
                     'BA.2' = pal[11])
 
-capacity_colors = c('Top 10%' = pal_capacity[3],
-                    'Bottom 90%' = pal_capacity[4])
+capacity_colors = c('Top 10%' = "#3b9ab2",
+                    'Bottom 90%' ="#78b7c5")
 
 model_colors <-c('Multicountry' = pal[12],
                  #'MLE' = 'seagreen',
@@ -95,7 +94,7 @@ world %>%
   select(adm0_a3, name, geometry) %>% 
   rename(iso3c = adm0_a3)
 
-df <- read_csv('../data/raw/2022-07-01_metadata.csv')
+df <- read_csv('data/raw/2022-07-01_metadata.csv')
 
 # Prep data for fig -------------------------------------------------------
 
@@ -134,50 +133,6 @@ processed <- df %>%
 
 # Generate panel A --------------------------------------------------------
 
-#p1 <- processed %>% 
-#  filter(collection_date == ymd('2022-5-1') | is.na(collection_date), name != 'Antarctica') %>% 
-#  ggplot(aes(geometry = geometry,
-#             fill = log10(cum_n)))+
-#  geom_sf( show.legend = F)+
-#  scale_fill_gradient2(low = low,
-#                       mid = mid,
-#                       high =  high,
-#                       na.value = na_color,
-#                       limits = c(0, 4.1))+
-#  theme_void()+
-#  labs(tag = 'A',
-#       title  = paste0(space, '2022-05-01'))
-#
-#
-#p2 <- processed %>% 
-#  filter(collection_date == ymd('2022-6-1') | is.na(collection_date), name != 'Antarctica') %>% 
-#  ggplot(aes(geometry = geometry,
-#             fill = log10(cum_n)))+
-#  geom_sf(show.legend = F)+
-#  scale_fill_gradient2(low = low,
-#                       mid = mid,
-#                       high =  high,
-#                       na.value = na_color,
-#                       limits = c(0, 4.1))+
-#  theme_void()+
-#  labs(title  = paste0(space, '2022-06-01'))
-#
-#
-#p3 <- processed %>% 
-#  filter(collection_date == ymd('2022-7-1') | is.na(collection_date), name != 'Antarctica') %>% 
-#  ggplot(aes(geometry = geometry,
-#             fill = log10(cum_n)))+
-#  geom_sf()+
-#  scale_fill_gradient2(low = low,
-#                       mid = mid,
-#                       high =  high,
-#                       na.value = na_color,
-#                       limits = c(0, 4.1))+
-#  theme_void()+
-#  labs(title  = paste0(space, '2022-07-01'))+
-#  theme(legend.position = 'bottom')
-#
-
 inset <- df %>% 
   group_by(country) %>% 
   summarize(n = n()) %>%
@@ -201,6 +156,8 @@ inset <- df %>%
   labs(x = 'Country',
        y = 'Cumulative\nproportion')
 
+
+
 p1 <- df %>% 
   janitor::clean_names() %>% 
   mutate(iso3c = countrycode(sourcevar = country,
@@ -223,8 +180,9 @@ p1 <- df %>%
   theme_void()+
   labs(tag = 'A',
        fill = TeX(r"(Cumulative number of sequences ($log_{10}$))"))+
-  scale_fill_gradient(low = 'white',
-                      high = "#A65141")+
+  scale_fill_gradient2(low = "#FFFFFF",
+                       mid = "#FCDFDF",
+                       high = "#f23535") +
   theme(legend.position = 'bottom',
         axis.ticks = element_blank(),
         axis.text = element_blank(),
@@ -375,7 +333,7 @@ p3 <- df %>%
   theme(legend.position = 'bottom',
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank())+
-  scale_fill_brewer(palette='Set1', direction = -1)+
+  scale_fill_manual(values = capacity_colors)+
   labs(y = 'Cumulative BA.5 sequences',
        x = 'Country')
 
@@ -429,73 +387,6 @@ p4 <- df %>%
     legend.text = element_text(size=15),
     legend.title = element_text(size = 15))
   
-  
-  
-# Top 10% of sequencing countries
-#p3 <- df %>% 
-#  janitor::clean_names() %>% 
-#  filter(pango_lineage %in%  c('BA.1', 'BA.2', 'BA.4', 'BA.5')) %>% 
-#  mutate(istop = if_else(country %in% c("USA", "United Kingdom", "Germany", "Denmark", "Canada", "France", 
-#                                "Japan", "India", "Sweden", "Brazil", "Switzerland", "Spain", 
-#                                "Austria", "Italy", "Belgium", "Netherlands", "Australia", "Israel", 
-#                                "Turkey", "Poland", "Ireland"),
-#                         "Top 10%",
-#                         "Bottom 90%"),
-#         istop = factor(istop, c("Top 10%",
-#                                 "Bottom 90%"))) %>% 
-#  filter(!is.na(pango_lineage),
-#         !is.na(collection_date),
-#         !is.na(istop)) %>% 
-#  group_by(pango_lineage, collection_date, istop) %>% 
-#  summarize(n = n()) %>% 
-#  ungroup() %>% 
-#  mutate(t_max = as.integer(max(collection_date) - min(collection_date)),
-#         t = as.integer(collection_date - min(collection_date)) + 1) %>% 
-#  ungroup() %>%   
-#  full_join(tibble(pango_lineage = NA,
-#                   t = 1:1000)) %>% 
-#  complete(pango_lineage, t, istop, fill = list(n = 0)) %>% 
-#  filter(!is.na(t),
-#         !is.na(istop)) %>% 
-#  group_by(pango_lineage, istop) %>%
-#  arrange(t) %>% 
-#  mutate(cum_n = cumsum(n)) %>%
-#  ungroup() %>% 
-#  filter(!is.na(pango_lineage)) %>% 
-#  group_by(t, pango_lineage) %>%
-#  filter(sum(cum_n) < 10000, sum(cum_n) > 500) %>%
-#  ungroup() %>% 
-#  group_by(pango_lineage, t) %>% 
-#  filter(sum(cum_n) > 1) %>% 
-#  ungroup() %>% 
-#  group_by(pango_lineage) %>% 
-#  mutate(t = t - min(t) + 1) %>% 
-#  ggplot(aes(t, cum_n, fill = istop))+
-#  geom_col(position = 'stack')+
-#  facet_wrap(~pango_lineage, scale = 'free_x', nrow = 1)+
-#  scale_fill_brewer(palette = 'Set1')+
-#  theme_bw()+
-#  labs(x = 'Days since 500th sequence collected',
-#       y = 'Cumulative number\nof sequences',
-#       fill = 'Sequencing capacity',
-#       tag = 'C')+
-#    theme(
-#      axis.text = element_text(size = axis_text_size),
-#      axis.title = element_text(size = axis_title_size),
-#      plot.tag = element_text(size = tag_size),
-#      legend.position= "bottom",
-#      legend.text = element_text(size=15))+
-#  theme(
-#    axis.text = element_text(size = axis_text_size),
-#    axis.title = element_text(size = axis_title_size),
-#    plot.tag = element_text(size = tag_size),
-#    strip.text = element_text(size = strip_text_size),
-#    strip.background = element_blank(), #  element_rect(colour = "black", fill = NA)
-#    legend.text = element_text(size=15),
-#    legend.title = element_text(size = 15))
-  
-
-
 # Top 10% of sequencing countries
 p3 <- df %>% 
   janitor::clean_names() %>% 
@@ -538,7 +429,7 @@ p3 <- df %>%
   ggplot(aes(t, cum_n, fill = istop))+
   geom_col(position = 'stack')+
   facet_wrap(~pango_lineage, scale = 'free', nrow = 1)+
-  scale_fill_brewer(palette = 'Set1')+
+  scale_fill_manual(values = capacity_colors)+
   theme_bw()+
   labs(x = 'Days since 500th sequence collected',
        y = 'Cumulative number\nof sequences',
@@ -554,10 +445,15 @@ design <- "
 
 fig <- p1 + p2 + p4 + plot_layout(design = design)
 
-ggsave('../data/output/figures/figure_1.tiff', 
+ggsave('data/output/figures/figure_1.png', 
        plot = fig,
        width = 15,
        height = 8)
+ggsave('data/output/figures/figure_1.pdf', 
+       plot = fig,
+       width = 15,
+       height = 8)
+
   
   
 # Figure 3 ----------------------------------------------------------------

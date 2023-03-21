@@ -69,7 +69,7 @@ ON pred.lineage = dat.lineage
 AND pred.country = dat.country
 AND pred.collection_date = dat.collection_date
 AND pred.reference_date = g.reference_date
-WHERE pred.country in ('Portugal', 'Brazil', 'Spain', 'India', 'Czechia')
+WHERE pred.country in ('Bangladesh', 'Brazil',  'India', 'Indonesia',  'Portugal', 'Russia')
 AND pred.lineage IN ('BA.2', 'BA.4', 'BA.5', 'BA.2.12.1', 'BA.1', 'other')
                         ")
 )
