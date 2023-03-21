@@ -12,3 +12,4 @@ fits/
 **/*.png
 *.parquet
 **/*.pq
+**/*.csv

@@ -1,5 +1,6 @@
 /Users/kjohnson/Documents/ppi-variant-tracker-manuscript/code/prepare_data_for_cmdstan.R="EA562050"
 /Users/kjohnson/Documents/ppi-variant-tracker-manuscript/model_equations.Rmd="68B59DF5"
+<<<<<<< Updated upstream
 /Users/kjohnson/Documents/variant-tracker/ppi-variant-tracker/code/auto_extract_gisaid.R="BC9F4ADD"
 /Users/kjohnson/Documents/variant-tracker/ppi-variant-tracker/code/functions_for_postprocessing.R="D557DAFC"
 /Users/kjohnson/Documents/variant-tracker/ppi-variant-tracker/code/pre_processing.R="DF64772E"
@@ -7,3 +8,7 @@
 /Users/kjohnson/Documents/variant-tracker/ppi-variant-tracker/dashboard/shiny-app/server.R="E0D4F650"
 /Users/kjohnson/Documents/variant-tracker/ppi-variant-tracker/dashboard/shiny-app/ui.R="21548A23"
 /Users/kjohnson/Downloads/summarizeWeather.R="C94EDD4C"
+=======
+/Users/zsusswein/ppi/ppi-variant-tracker-manuscript/code/figures.R="9DAB3DB4"
+/Users/zsusswein/ppi/ppi-variant-tracker-manuscript/compile_cmdstan="386E04E3"
+>>>>>>> Stashed changes
