@@ -13,3 +13,5 @@ fits/
 *.parquet
 **/*.pq
 **/*.csv
+.lintr
+*.txt

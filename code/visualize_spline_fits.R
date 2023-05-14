@@ -103,7 +103,7 @@ for (lineage_to_show in c(
     ) +
     facet_grid(country ~ reference_date) +
     supp_theme(date = T) +
-    labs(y = paste0('Prevalance of lineage: ', lineage_to_show))
+    labs(y = paste0("Prevalance of lineage: ", lineage_to_show))
 
   ggsave(paste0("figs/supp/spline_supp_", lineage_to_show, ".png"), p1)
 }
@@ -182,11 +182,15 @@ p3 <- ggplot(d, aes(
   color = name
 )) +
   geom_point(position = position_dodge(width = 5)) +
-  supp_theme(date=T,
-             legend_color_size = 5) +
+  supp_theme(
+    date = T,
+    legend_color_size = 5
+  ) +
   facet_wrap(~country) +
-  labs(x = 'Brier score (based on final reference dataset)',
-       color = element_blank())
+  labs(
+    x = "Brier score (based on final reference dataset)",
+    color = element_blank()
+  )
 
 ggsave("figs/supp/brier_score.png", p3)
 
