@@ -21,6 +21,16 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(countrycode)
 
+library(memoise)
+
+
+cd <- cache_filesystem(here("data", ".rcache"))
+if (!is.memoised(ggplot2::ggsave)) {
+        ggsave <- memoise(ggplot2::ggsave,
+                          cache = cd)
+}
+
+print("Made it!")
 
 # Figure 1 ----------------------------------------------------------------
 
@@ -151,7 +161,9 @@ inset <- df %>%
   theme_classic()+
   theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
-        axis.title.y = element_text(size = 9))+
+        axis.title.y = element_text(size = 15),
+        axis.title.x = element_text(size = 15),
+        axis.text.y = element_text(size = 11)) +
   scale_fill_manual(values = capacity_colors)+
   labs(x = 'Country',
        y = 'Cumulative\nproportion')
@@ -196,9 +208,8 @@ p1 <- df %>%
     legend.title = (element_text(size = 15)))+
   annotation_custom(
     ggplotGrob(inset), 
-    xmin = -200, xmax = -100, ymin = -65, ymax = 15
+    xmin = -220, xmax = -90, ymin = -65, ymax = 15
   )
-
 
 
 p5_dat <- df %>% 
@@ -283,15 +294,16 @@ p2 <- ggplot()+
   geom_hline(aes(yintercept = 500), alpha = .5)+
   scale_color_manual(values = lineage_colors)+
   theme_bw()+
-  labs(y = TeX(r"(Cumulative number of sequences)"),
+  labs(y = "Cumulative number\nof sequences",
        x = 'Days from emergence',
        tag = 'B',
        color = element_blank())+
-  scale_y_log10()+
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x)),
+                breaks = trans_breaks("log10", function(x) 10^x))+
   scale_x_log10()+
   theme(
-    axis.text = element_text(size = axis_text_size),
-    axis.title = element_text(size = axis_title_size),
+    axis.text = element_text(size = axis_text_size + 6),
+    axis.title = element_text(size = axis_title_size + 5),
     plot.tag = element_text(size = tag_size),
     strip.text = element_text(size = strip_text_size),
     legend.position= "top",
@@ -378,10 +390,13 @@ p4 <- df %>%
   theme_bw()+
   facet_wrap(~pango_lineage, scale = 'free_x', nrow = 1)+
   theme(
-    axis.text = element_text(size = axis_text_size),
-    axis.title = element_text(size = axis_title_size),
+    axis.text.x = element_text(size = axis_text_size + 6,
+                               angle = 35,
+                               hjust = 1),
+    axis.text.y = element_text(size = axis_text_size + 3),
+    axis.title = element_text(size = axis_title_size + 5),
     plot.tag = element_text(size = tag_size),
-    strip.text = element_text(size = strip_text_size),
+    strip.text = element_text(size = strip_text_size + 6),
     legend.position= "bottom",
     strip.background = element_blank(), #  element_rect(colour = "black", fill = NA)
     legend.text = element_text(size=15),
@@ -470,12 +485,12 @@ lineage_colors <- c('BA.1' = pal[10],
 # Load data ---------------------------------------------------------------
 
 #setwd(here::here("code"))
-clean_global_df <- read_csv('../data/processed/validation_data/clean_global_df_2022-07-01.csv') %>% 
+clean_global_df <- read_csv('data/processed/validation_data/clean_global_df_2022-07-01.csv') %>% 
     filter(collection_date <= ymd("2022-07-01"))
-r_summary <- read_csv('../data/processed/validation_data/r_summary_2022-07-01.csv')
-mu_all <- read.csv('../data/processed/multicountry_mu_distrib_2022-07-01.csv')
-variant_t <-read_csv('../data/processed/variant_t_2022-07-01.csv')
-variant_draws <-read_csv('../data/processed/multicountry_model_pred_p_2022-07-01.csv') %>% 
+r_summary <- read_csv('data/processed/validation_data/r_summary_2022-07-01.csv')
+mu_all <- read.csv('data/processed/multicountry_mu_distrib_2022-07-01.csv')
+variant_t <-read_csv('data/processed/variant_t_2022-07-01.csv')
+variant_draws <-read_csv('data/processed/multicountry_model_pred_p_2022-07-01.csv') %>% 
     filter(date <= ymd("2022-07-01"))
 
 
@@ -655,7 +670,7 @@ fig <- p1 + p2 + p3 + plot_layout(design = design)
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_3.pdf', 
+ggsave('data/output/figures/figure_3.pdf', 
        plot = fig,
        width = 15,
        height = 8)
@@ -663,13 +678,13 @@ ggsave('../data/output/figures/figure_3.pdf',
 
 # Load in data for figure 4 ---------------------------------------------------
 
-r_summary<- read_csv('../data/output/validation/r_summary.csv')
-clean_global_df <- read_csv('../data/output/validation/clean_global_df.csv')
-mu_hat <- read_csv('../data/output/validation/mu_hat.csv')
-mu_distrib <- read_csv('../data/output/validation/mu_distrib.csv')
-r_distrib <- read_csv('../data/output/validation/r_distrib.csv')
-country_metrics <- read_csv('../data/output/validation/country_metrics.csv')
-country_lineage_metrics <- read_csv('../data/output/validation/country_lineage_metrics.csv')
+r_summary<- read_csv('data/output/validation/r_summary.csv')
+clean_global_df <- read_csv('/data/output/validation/clean_global_df.csv')
+mu_hat <- read_csv('data/output/validation/mu_hat.csv')
+mu_distrib <- read_csv('data/output/validation/mu_distrib.csv')
+r_distrib <- read_csv('data/output/validation/r_distrib.csv')
+country_metrics <- read_csv('data/output/validation/country_metrics.csv')
+country_lineage_metrics <- read_csv('data/output/validation/country_lineage_metrics.csv')
 
 # Clean the data for visualizations -------------------------------------------
 # Use this to decide on which countries to visualize
@@ -980,7 +995,7 @@ fig
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_12_04.pdf', 
+ggsave('data/output/figures/figure_4_Portugal_BA5_12_04.pdf', 
        plot = fig,
        width = 21,
        height = 15)
@@ -1082,7 +1097,7 @@ sfig4MLEPortugalBA5
 sfig4 <- ggarrange(sfig4MCPortugalBA5, sfig4MLEPortugalBA5, ncol = 2, nrow = 1, align = 'v')
 sfig4
 
-ggsave('../data/output/figures/SFIG2_BS.pdf', 
+ggsave('data/output/figures/SFIG2_BS.pdf', 
        plot = sfig4,
        width = 12,
        height = 6)
@@ -1150,7 +1165,7 @@ sfig4_norm_approx <- ggarrange(sfigMCPortugalBA5_normapprox, sfigMLEPortugalBA5_
 sfig4_norm_approx
 
 
-ggsave('../data/output/figures/SFIG2.png', 
+ggsave('data/output/figures/SFIG2.png', 
        plot = sfig4_norm_approx,
        width = 12,
        height = 6)
@@ -1214,7 +1229,7 @@ sfigBSperiod<- ggarrange(sfigBScalib, sfigBSforecast, ncol = 2, nrow = 1,
 sfigBSperiod
 
 # Not currently a part of the manuscript but we could add in 
-ggsave('../data/output/figures/sfigure_Portugal_BA5_BS.png', 
+ggsave('data/output/figures/sfigure_Portugal_BA5_BS.png', 
        plot = sfigBSperiod,
        width = 12,
        height = 6)
@@ -1275,7 +1290,7 @@ design <- "
 "
 fig <- sfigrheatmapMC + sfigrheatmapMLE +plot_layout(design = design)
 
-ggsave('../data/output/figures/SFIG3.pdf', 
+ggsave('data/output/figures/SFIG3.pdf', 
        plot = fig,
        width = 10,
        height = 5)
@@ -1318,7 +1333,7 @@ sfig4a
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/SFIG1.pdf', 
+ggsave('data/output/figures/SFIG1.pdf', 
        plot = sfig4a,
        width = 15,
        height = 6)
@@ -1390,7 +1405,7 @@ design <- "
 "
 fig <- fig4addtop + fig4addbottom +plot_layout(design = design)
 
-ggsave('../data/output/figures/fig4_heatmap.png', 
+ggsave('data/output/figures/fig4_heatmap.png', 
        plot = fig,
        width = 10,
        height = 15)
@@ -1453,7 +1468,7 @@ design <- "
 "
 fig <- fig4addtop + fig4addbottom +plot_layout(design = design)
 
-ggsave('../data/output/figures/fig4_heatmap_dif.png', 
+ggsave('data/output/figures/fig4_heatmap_dif.png', 
        plot = fig,
        width = 10,
        height = 15)
@@ -1471,7 +1486,7 @@ fig
 
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_big.png', 
+ggsave('data/output/figures/figure_4_Portugal_BA5_big.png', 
        plot = fig,
        width = 21,
        height = 20)
@@ -1561,7 +1576,7 @@ fig <- fig4a +  fig4global + fig4efjointc + fig4addtop + fig4addbottom +
     plot_layout(design = design)
 fig
 
-ggsave('../data/output/figures/figure_4_Portugal_BA5_w_global.png', 
+ggsave('data/output/figures/figure_4_Portugal_BA5_w_global.png', 
        plot = fig,
        width = 21,
        height = 15)
@@ -1705,7 +1720,7 @@ fig
 
 # Save fig 
 
-ggsave('../data/output/figures/figure_4_Spain_BA5.png', 
+ggsave('data/output/figures/figure_4_Spain_BA5.png', 
        plot = fig,
        width = 15,
        height = 8)
@@ -1844,7 +1859,7 @@ fig <- fig4a + fig4b + fig4c + fig4d + plot_layout(design = design)
 fig
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Portugal_BA2121.png', 
+ggsave('data/output/figures/figure_4_Portugal_BA2121.png', 
        plot = fig,
        width = 15,
        height = 8)
@@ -1988,7 +2003,7 @@ fig <- fig4a + fig4b + fig4c + fig4d + plot_layout(design = design)
 fig
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_US_BA2121.png', 
+ggsave('data/output/figures/figure_4_US_BA2121.png', 
        plot = fig,
        width = 15,
        height = 8)
@@ -2127,7 +2142,7 @@ fig <- fig4a + fig4b + fig4c + fig4d + plot_layout(design = design)
 fig
 # Save fig ----------------------------------------------------------------
 
-ggsave('../data/output/figures/figure_4_Switzerland_BA5.png', 
+ggsave('data/output/figures/figure_4_Switzerland_BA5.png', 
        plot = fig,
        width = 15,
        height = 8)
