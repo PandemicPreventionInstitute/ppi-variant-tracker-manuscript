@@ -562,9 +562,10 @@ p1 <- ggplot()+
     theme_bw()+
     theme(ggside.panel.scale = .3,
           axis.text = element_text(size = axis_text_size),
+          axis.text.x = element_text(size = axis_text_size * 1.5, angle = 45),
           axis.title = element_text(size = axis_title_size),
           plot.tag = element_text(size = tag_size),
-          strip.text = element_text(size = strip_text_size),
+          strip.text = element_text(size = strip_text_size * 1.25),
           strip.background = element_blank(),
           legend.position= "bottom",
           legend.text = element_text(size=15))+
@@ -650,7 +651,7 @@ p3 <- mu_all %>%
                  show.legend = F)+
     theme_bw()+
     theme(legend.position=c(.2,.4),
-          axis.text = element_text(size = axis_text_size),
+          axis.text = element_text(size = axis_text_size * 1.5),
           axis.title = element_text(size = axis_title_size),
           plot.tag = element_text(size = tag_size))+
     labs(y = element_blank(), 
@@ -679,7 +680,7 @@ ggsave('data/output/figures/figure_3.pdf',
 # Load in data for figure 4 ---------------------------------------------------
 
 r_summary<- read_csv('data/output/validation/r_summary.csv')
-clean_global_df <- read_csv('/data/output/validation/clean_global_df.csv')
+clean_global_df <- read_csv('data/output/validation/clean_global_df.csv')
 mu_hat <- read_csv('data/output/validation/mu_hat.csv')
 mu_distrib <- read_csv('data/output/validation/mu_distrib.csv')
 r_distrib <- read_csv('data/output/validation/r_distrib.csv')
